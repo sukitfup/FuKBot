@@ -8,4 +8,4 @@
 cmake_minimum_required(VERSION 3.6.2)
 
 project (FuKBot)
-add_executable(FuKBot fuk.c)
+add_executable(FuKBot fuk3.c)
