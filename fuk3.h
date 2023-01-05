@@ -37,10 +37,69 @@
     #define CFGSTUFF_FORMATTING_OPTIONS         "Options: %s, %s, %s | %s, %s, %s, %s.\r\n"
 #pragma endregion
 
-#pragma region "OnJoin formatting"
-    #define ON_X_SEND_FORMATTING  "/%s %s\r\n"
+#pragma region "Base messages (this should get larger lol)"
+    #define BASE_DESIGNATE      "designate"
+    #define BASE_BAN            "ban"
+    #define BASE_TOPIC          "topic"
+    #define BASE_TRIGGER        "trigger"
+    #define BASE_HOME           "home"
+    #define BASE_BACKUP         "backup"
+    #define BASE_SERVER         "server"
+    #define BASE_THREADS        "threads"
+    #define BASE_PORT           "port"
+    #define BASE_DELAY          "delay"
+    #define BASE_DELAY_2        "delay2"
+    #define BASE_SCATTER        "scatter"
+    #define BASE_BANWAIT        "banwait"
+    #define BASE_BANWAIT_TEXT   "ban wait"
+    #define BASE_CONWAIT        "conwait"
+    #define BASE_SAY            "say"
+    #define BASE_VER            "ver"
+    #define BASE_QUIT           "quit"
+    #define BASE_RECON          "recon"
+    #define BASE_PLACE          "place"
+    #define BASE_PING           "ping"
+    #define BASE_DES            CFGSTUFF_DES    
+    #define BASE_OP             "op"
+    #define BASE_LOCK           "lock"
+    #define BASE_UNLOCK         "unlock"
+    #define BASE_CLEAN          "clean"
+    #define BASE_TAG            "tag"
+    #define BASE_CONTIME        "contime"
+    #define BASE_MEM            "mem"
+
+    #define BASE_COLON              ": "
+    #define BASE_ISNOW              " is now: "
+    #define BASE_NO_HEIR_TEXT       "No heir to your throne."
+    #define BASE_CHANLOCKED         "(Channel Locked)"
+    #define BASE_TAGBAN_DISABLED    "Tagban disabled."
 #pragma endregion
 
+#pragma region "Server Commands"
+    #define SERVER_WHISPER      "w"
+    #define SERVER_BAN          "ban"
+    #define SERVER_UNBAN        "unban"
+    #define SERVER_KICK         "kick"
+    #define SERVER_JOIN         "join"
+    #define SERVER_REJOIN       "rejoin"    /* Note: Non existant command, this will not work on a properly emulated server */
+    #define SERVER_DESIGNATE    BASE_DESIGNATE
+    #define SERVER_TOPIC        BASE_TOPIC
+    #define SERVER_RESIGN       "resign"
+    #define SERVER_UPTIME       "uptime"    /* Note: Non existant command, this will not work on a properly emulated server */
+    #define SERVER_WHO          "who"
+
+    #define SERVER_COMMAND_0    "/%s\r\n"
+    #define SERVER_COMMAND_1    "/%s %s\r\n"
+    #define SERVER_COMMAND_2    "/%s %s %s\r\n"
+#pragma endregion
+
+#pragma region "Join,Flags,Talk formatting"
+    #define ON_COMMAND_REPLY_0  "/%s %s %s%s%s\r\n"
+    #define ON_COMMAND_REPLY_1  "/%s %s Actual %s (with %s): %d\r\n"
+    #define ON_COMMAND_REPLY_2  "%s\r\n"
+    #define ON_COMMAND_REPLY_3  "/%s %s %d seconds to connect.\r\n"
+    #define ON_COMMAND_REPLY_4  "/%s %s Memory usage: %ld bytes\r\n"
+#pragma endregion
 
 #define MAX_THREADS 16
 #define BUFFSIZE 1024
