@@ -891,7 +891,7 @@ int save_cfg(struct data* pb) {
     }
     fclose(cfg);
 
-    return TRUE;
+    return 1; //TRUE; /* github dosent like the C foundation boolean integer value what kinda shit is this */
 }
 
 int read_config() {
