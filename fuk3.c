@@ -5,7 +5,7 @@ void set_nonblock(int fd) {
     fcntl(fd, F_SETFL, new_option);
 }
 
-void cfgStuff(int s, data* pb, char* com, char* text) {
+void cfgStuff(int s, struct data* pb, char* com, char* text) {
     int x;
     int once = 1;
     char* pos;
@@ -183,7 +183,7 @@ void OnJoin(int s, struct data* pb, char* szSpeaker) {
     if (pb->hasop == 1 && pb->flood < 500) {
         for (int d = 0; d < desSz; d++) {
             if (!strcasecmp(szSpeaker, des[d].id)) {
-                Send(s, ONJOIN_SEND_FORMATTING, BASE_DESIGNATE, szSpeaker);
+                Send(s, ON_X_SEND_FORMATTING, BASE_DESIGNATE, szSpeaker);
                 msleep(3000);
                 return;
             }
@@ -198,19 +198,19 @@ void OnJoin(int s, struct data* pb, char* szSpeaker) {
         }
         if (pb->tban == 1) {
             if (strstr(szSpeaker, tag)) {
-                Send(s, ONJOIN_SEND_FORMATTING, BASE_BAN, szSpeaker);
+                Send(s, ON_X_SEND_FORMATTING, BASE_BAN, szSpeaker);
                 msleep(banWait * 1000);
                 return;
             }
         }
         if (pb->lockdown == 1) {
-            Send(s, ONJOIN_SEND_FORMATTING, BASE_BAN, szSpeaker);
+            Send(s, ON_X_SEND_FORMATTING, BASE_BAN, szSpeaker);
             msleep(banWait * 1000);
             return;
         }
         for (int l = 0; l < shitSz; l++) {
             if (strstr(szSpeaker, shit[l].id)) {
-                Send(s, ONJOIN_SEND_FORMATTING, BASE_BAN, szSpeaker);
+                Send(s, ON_X_SEND_FORMATTING, BASE_BAN, szSpeaker);
                 msleep(banWait * 1000);
                 return;
             }
@@ -218,20 +218,21 @@ void OnJoin(int s, struct data* pb, char* szSpeaker) {
     } 
 } /* dont need to return at the end of a void function */
 
-void OnUserFlags(int s, struct data *pb, char *szSpeaker, u_long uFlags) {
-    if (uFlags==18 && !strcasecmp(pb->username, szSpeaker)){
-        pb->hasop=1;
-        if(topic!=NULL) {
-            Send(s, "/topic %s\r\n", topic);
+void OnUserFlags(int s, struct data* pb, char* szSpeaker, u_long uFlags) {
+    if (uFlags == 18 && !strcasecmp(pb->username, szSpeaker)) {
+        pb->hasop = 1;
+        if (topic != NULL) {
+            Send(s, ON_X_SEND_FORMATTING, BASE_TOPIC, topic);
             msleep(3000);
         }
         return;
     }
-    if (uFlags==16 && !strcasecmp(pb->username, szSpeaker)){
-        pb->hasop=0;
-        pb->lockdown=0;
-    } return;
+    if (uFlags == 16 && !strcasecmp(pb->username, szSpeaker)) {
+        pb->hasop = 0;
+        pb->lockdown = 0;
+    }
 }
+
 void OnTalk(int s, struct data *pb, char *szSpeaker, char *szEventText) {
     int i = 0;
     int doStuff=0;
