@@ -277,7 +277,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText) {
                 else if (!strcasecmp(BASE_TRIGGER, com)) {
                     if (ptrDat == NULL) {
                         if (pb->botNum == 0) {
-                            Send(s, ON_COMMAND_REPLY_0, SERVER_WHISPER, szSpeaker, BASE_TRIGGER, BASE_COLON, pb->trigger);
+                            Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker, BASE_TRIGGER, BASE_COLON, pb->trigger);
                             msleep(3000);
                         }
                         else
@@ -289,7 +289,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText) {
                         memset(trigger, '\0', sizeof(trigger));
                         strcpy(trigger, ptrDat);
                         save_cfg(pb);
-                        Send(s, ON_COMMAND_REPLY_0, SERVER_WHISPER, szSpeaker, BASE_TRIGGER, BASE_ISNOW, pb->trigger);
+                        Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker, BASE_TRIGGER, BASE_ISNOW, pb->trigger);
                         msleep(3000);
                     }
                     else {
@@ -300,7 +300,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText) {
                 else if (!strcasecmp(BASE_HOME, com)) {
                     if (ptrDat == NULL) {
                         if (pb->botNum == 0) {
-                            Send(s, ON_COMMAND_REPLY_0, SERVER_WHISPER, szSpeaker, BASE_HOME, BASE_COLON, pb->channel);
+                            Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker, BASE_HOME, BASE_COLON, pb->channel);
                             msleep(3000);
                         }
                         else
@@ -312,7 +312,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText) {
                         memset(channel, '\0', sizeof(channel));
                         strcpy(channel, ptrDat);
                         save_cfg(pb);
-                        Send(s, ON_COMMAND_REPLY_0, SERVER_WHISPER, szSpeaker, BASE_HOME, BASE_ISNOW, pb->channel);
+                        Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker, BASE_HOME, BASE_ISNOW, pb->channel);
                         msleep(3000);
                     }
                     else {
@@ -327,7 +327,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText) {
                             msleep(3000);
                         }
                         else if (pb->botNum == 0) {
-                            Send(s, ON_COMMAND_REPLY_0, SERVER_WHISPER, szSpeaker, BASE_TOPIC, BASE_COLON, topic);
+                            Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker, BASE_TOPIC, BASE_COLON, topic);
                             msleep(3000);
                         }
                     }
@@ -342,63 +342,63 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText) {
                             memset(topic, '\0', sizeof(topic));
                             strcpy(topic, ptrDat);
                             save_cfg(pb);
-                            Send(s, ON_COMMAND_REPLY_0, SERVER_WHISPER, szSpeaker, BASE_TOPIC, BASE_ISNOW, topic);
+                            Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker, BASE_TOPIC, BASE_ISNOW, topic);
                             msleep(3000);
                         }
                     } return;
                 }
                 else if (!strcasecmp(BASE_BACKUP, com) && pb->botNum == 0) {
                     if (ptrDat == NULL) {
-                        Send(s, ON_COMMAND_REPLY_0, SERVER_WHISPER, szSpeaker, BASE_BACKUP, BASE_COLON, backup);
+                        Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker, BASE_BACKUP, BASE_COLON, backup);
                         msleep(3000);
                     }
                     else {
                         memset(backup, '\0', sizeof(backup));
                         strcpy(backup, ptrDat);
                         save_cfg(pb);
-                        Send(s, ON_COMMAND_REPLY_0, SERVER_WHISPER, szSpeaker, BASE_BACKUP, BASE_ISNOW, backup);
+                        Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker, BASE_BACKUP, BASE_ISNOW, backup);
                         msleep(3000);
                     } return;
                 }
                 else if (!strcasecmp(BASE_SERVER, com) && pb->botNum == 0) {
                     if (ptrDat == NULL) {
-                        Send(s, ON_COMMAND_REPLY_0, SERVER_WHISPER, szSpeaker, BASE_SERVER, BASE_COLON, pb->server);
+                        Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker, BASE_SERVER, BASE_COLON, pb->server);
                         msleep(3000);
                     } return;
                 }
                 else if (!strcasecmp(BASE_THREADS, com) && pb->botNum == 0) {
                     if (ptrDat == NULL) {
-                        Send(s, ON_COMMAND_REPLY_0, SERVER_WHISPER, szSpeaker, BASE_THREADS, BASE_COLON, pb->threads);
+                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker, BASE_THREADS, BASE_COLON, pb->threads);
                         msleep(3000);
                     }
                     else {
                         threads = atoi(ptrDat);
                         save_cfg(pb);
-                        Send(s, ON_COMMAND_REPLY_0, SERVER_WHISPER, szSpeaker, BASE_THREADS, BASE_ISNOW, pb->threads);
+                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker, BASE_THREADS, BASE_ISNOW, pb->threads);
                         msleep(3000);
                     } return;
                 }
                 else if (!strcasecmp(BASE_PORT, com) && pb->botNum == 0) { /* arent you forgetting to update pb->port at the save? lol */
                     if (ptrDat == NULL) {
-                        Send(s, ON_COMMAND_REPLY_0, SERVER_WHISPER, szSpeaker, BASE_PORT, BASE_COLON, pb->port);
+                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker, BASE_PORT, BASE_COLON, pb->port);
                         msleep(3000);
                     }
                     else {
                         port = atoi(ptrDat); // <----- pb->port
                         save_cfg(pb);
-                        Send(s, ON_COMMAND_REPLY_0, SERVER_WHISPER, szSpeaker, BASE_PORT, BASE_ISNOW, port);
+                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker, BASE_PORT, BASE_ISNOW, port);
                         msleep(3000);
                     } return;
                 }
                 else if (!strcasecmp(BASE_DELAY, com) && pb->botNum == 0) {
                     if (ptrDat == NULL) {
-                        Send(s, ON_COMMAND_REPLY_0, SERVER_WHISPER, szSpeaker, BASE_DELAY, BASE_COLON, delay);
+                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker, BASE_DELAY, BASE_COLON, delay);
                         msleep(3000);
                     }
                     else {
                         delay = atoi(ptrDat);
                         save_cfg(pb);
-                        Send(s, ON_COMMAND_REPLY_0, SERVER_WHISPER, szSpeaker, BASE_DELAY, BASE_ISNOW, delay);
+                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker, BASE_DELAY, BASE_ISNOW, delay);
                         msleep(3000);
                     } return;
                 }
@@ -410,37 +410,37 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText) {
                 }
                 else if (!strcasecmp(BASE_SCATTER, com) && pb->botNum == 0) {
                     if (ptrDat == NULL) {
-                        Send(s, ON_COMMAND_REPLY_0, SERVER_WHISPER, szSpeaker, BASE_SCATTER, BASE_COLON, scatter);
+                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker, BASE_SCATTER, BASE_COLON, scatter);
                         msleep(3000);
                     }
                     else {
                         scatter = atoi(ptrDat);
                         save_cfg(pb);
-                        Send(s, ON_COMMAND_REPLY_0, SERVER_WHISPER, szSpeaker, BASE_SCATTER, BASE_ISNOW, scatter);
+                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker, BASE_SCATTER, BASE_ISNOW, scatter);
                         msleep(3000);
                     } return;
                 }
                 else if (!strcasecmp(BASE_BANWAIT, com) && pb->botNum == 0) {
                     if (ptrDat == NULL) {
-                        Send(s, ON_COMMAND_REPLY_0, SERVER_WHISPER, szSpeaker, BASE_BANWAIT, BASE_COLON, banWait);
+                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker, BASE_BANWAIT, BASE_COLON, banWait);
                         msleep(3000);
                     }
                     else {
                         banWait = atoi(ptrDat) * 1000;
                         save_cfg(pb);
-                        Send(s, ON_COMMAND_REPLY_0, SERVER_WHISPER, szSpeaker, BASE_BANWAIT, BASE_ISNOW, (banWait / 1000));
+                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker, BASE_BANWAIT, BASE_ISNOW, (banWait / 1000));
                         msleep(3000);
                     } return;
                 }
                 else if (!strcasecmp(BASE_CONWAIT, com) && pb->botNum == 0) {
                     if (ptrDat == NULL) {
-                        Send(s, ON_COMMAND_REPLY_0, SERVER_WHISPER, szSpeaker, BASE_CONWAIT, BASE_COLON, conWait);
+                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker, BASE_CONWAIT, BASE_COLON, conWait);
                         msleep(3000);
                     }
                     else {
                         conWait = atoi(ptrDat);
                         save_cfg(pb);
-                        Send(s, ON_COMMAND_REPLY_0, SERVER_WHISPER, szSpeaker, BASE_CONWAIT, BASE_ISNOW, conWait);
+                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker, BASE_CONWAIT, BASE_ISNOW, conWait);
                         msleep(3000);
                     } return;
                 }
