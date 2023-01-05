@@ -13,6 +13,11 @@
 #include <stdarg.h>
 #include <fcntl.h>
 
+/*
+	Set your version text here
+*/
+#define FUK_VERSION "FuKeRy | v3.0"
+
 /* note: if you cant use #pragma region with your compiler tell me */
 #pragma region "Base messages (this should get larger lol)"
     #define BASE_DESIGNATE  "designate"
