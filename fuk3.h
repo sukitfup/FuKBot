@@ -13,6 +13,34 @@
 #include <stdarg.h>
 #include <fcntl.h>
 
+/* note: if you cant use #pragma region with your compiler tell me */
+#pragma region "Base messages (this should get larger lol)"
+    #define BASE_DESIGNATE  "designate"
+    #define BASE_BAN        "ban"
+#pragma endregion
+
+#pragma region "CFG_STUFF Defines"
+    #define CFGSTUFF_LIST       "list"
+    #define CFGSTUFF_REM        "rem"
+    #define CFGSTUFF_ADD        "add"
+    #define CFGSTUFF_FROM       "from"
+    #define CFGSTUFF_TO         "to"
+    #define CFGSTUFF_MASTER     "master"
+    #define CFGSTUFF_SAFE       "safe"
+    #define CFGSTUFF_SHIT       "shit"
+    #define CFGSTUFF_DES        "des"
+
+    #define CFGSTUFF_FORMATTING_X_EQUILS_X      "%s = %s\r\n"
+    #define CFGSTUFF_FORMATTING_TO_FROM_SECTION "Success! %s %s %s %s.\r\n"
+    #define CFGSTUFF_FORMATTING_ADD_SECTION     "%s is already a %s.\r\n"
+    #define CFGSTUFF_FORMATTING_OPTIONS         "Options: %s, %s, %s | %s, %s, %s, %s.\r\n"
+#pragma endregion
+
+#pragma region "OnJoin formatting"
+    #define ONJOIN_SEND_FORMATTING  "/%s %s\r\n"
+#pragma endregion
+
+
 #define MAX_THREADS 16
 #define BUFFSIZE 1024
 #define INVALID_SOCKET -1
