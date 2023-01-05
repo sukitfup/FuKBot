@@ -233,304 +233,363 @@ void OnUserFlags(int s, struct data* pb, char* szSpeaker, u_long uFlags) {
     }
 }
 
-void OnTalk(int s, struct data *pb, char *szSpeaker, char *szEventText) {
+void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText) {
     int i = 0;
-    int doStuff=0;
-    char *text;
-    char *com;
+    int doStuff = 0;
+    char* com;
     char pi[512];
-    FILE *fp1;
+    FILE* fp1;
     char pingStr[250];
     for (i = 0; i < masterSz; i++) {
-        if(!strcasecmp(szSpeaker,master[i].id))
-            doStuff=1;
+        if (!strcasecmp(szSpeaker, master[i].id))
+            doStuff = 1;
     }
-    if (doStuff!=1)
+    if (doStuff != 1)
         return;
     else {
-        text=strdup(szEventText);
-        if ( text[0] == pb->trigger[0] || text[0] == "?"[0] ) {
-            text=strdup(text+1);
-            com = strsep( &text, " " );
-            if ( com != NULL) {
-                if (!strcasecmp("list", com) && text != NULL) {
+        if (szEventText[0] == pb->trigger[0] || szEventText[0] == "?"[0]) {
+            /*
+                removed the strdup
+            */
+            char tmpBuf[256] = { 0 };
+            memcpy(tmpBuf, szEventText + 1, strlen(szEventText + 1));
+            char* ptrDat = tmpBuf;
+            com = strsep(&ptrDat, " ");
+
+            if (com != NULL) {
+                if (!strcasecmp("list", com) && ptrDat != NULL) {
                     if (pb->botNum == 0)
-                        cfgStuff(s, pb, com, text);
+                        cfgStuff(s, pb, com, ptrDat);
                     return;
-                } else if (!strcasecmp("add", com) && text != NULL) {
+                }
+                else if (!strcasecmp("add", com) && ptrDat != NULL) {
                     if (pb->botNum == 0) {
-                        cfgStuff(s, pb, com, text);
+                        cfgStuff(s, pb, com, ptrDat);
                         save_cfg(pb);
                     } return;
-                } else if (!strcasecmp("rem", com) && text != NULL) {
+                }
+                else if (!strcasecmp("rem", com) && ptrDat != NULL) {
                     if (pb->botNum == 0) {
-                        cfgStuff(s, pb, com, text);
+                        cfgStuff(s, pb, com, ptrDat);
                         save_cfg(pb);
                     } return;
-                } else if (!strcasecmp("trigger", com)) {
-                    if (text == NULL) {
-                        if(pb->botNum == 0) {
+                }
+                else if (!strcasecmp("trigger", com)) {
+                    if (ptrDat == NULL) {
+                        if (pb->botNum == 0) {
                             Send(s, "/msg %s Trigger: %s\r\n", szSpeaker, pb->trigger);
                             msleep(3000);
-                        } else
+                        }
+                        else
                             return;
-                    } else if (pb->botNum == 0) {
+                    }
+                    else if (pb->botNum == 0) {
                         memset(pb->trigger, '\0', sizeof(pb->trigger));
-                        strcpy(pb->trigger, text);
+                        strcpy(pb->trigger, ptrDat);
                         memset(trigger, '\0', sizeof(trigger));
-                        strcpy(trigger, text);
+                        strcpy(trigger, ptrDat);
                         save_cfg(pb);
                         Send(s, "/msg %s Trigger is now: %s\r\n", szSpeaker, pb->trigger);
                         msleep(3000);
-                    } else {
+                    }
+                    else {
                         memset(pb->trigger, '\0', sizeof(pb->trigger));
-                        strcpy(pb->trigger, text);
+                        strcpy(pb->trigger, ptrDat);
                     } return;
-                } else if (!strcasecmp("home", com)) {
-                    if (text == NULL) {
+                }
+                else if (!strcasecmp("home", com)) {
+                    if (ptrDat == NULL) {
                         if (pb->botNum == 0) {
                             Send(s, "/msg %s Home: %s\r\n", szSpeaker, pb->channel);
                             msleep(3000);
-                        } else
+                        }
+                        else
                             return;
-                    } else if (pb->botNum == 0) {
+                    }
+                    else if (pb->botNum == 0) {
                         memset(pb->channel, '\0', sizeof(pb->channel));
-                        strcpy(pb->channel, text);
+                        strcpy(pb->channel, ptrDat);
                         memset(channel, '\0', sizeof(channel));
-                        strcpy(channel, text);
+                        strcpy(channel, ptrDat);
                         save_cfg(pb);
                         Send(s, "/msg %s Home is now: %s\r\n", szSpeaker, pb->channel);
                         msleep(3000);
-                    }else {
-                        memset(pb->channel , '\0', sizeof(pb->channel));
-                        strcpy(pb->channel, text);
+                    }
+                    else {
+                        memset(pb->channel, '\0', sizeof(pb->channel));
+                        strcpy(pb->channel, ptrDat);
                     } return;
-                } else if (!strcasecmp("topic", com)) {
-                    if (text == NULL) {
-                        if (pb->hasop==1) {
+                }
+                else if (!strcasecmp("topic", com)) {
+                    if (ptrDat == NULL) {
+                        if (pb->hasop == 1) {
                             Send(s, "/topic %s\r\n", topic);
                             msleep(3000);
-                        } else if (pb->botNum == 0) {
+                        }
+                        else if (pb->botNum == 0) {
                             Send(s, "/msg %s Topic: %s\r\n", szSpeaker, topic);
                             msleep(3000);
                         }
-                    }else {
-                        if (pb->hasop==1){
+                    }
+                    else {
+                        if (pb->hasop == 1) {
                             memset(topic, '\0', sizeof(topic));
-                            strcpy(topic, text);
+                            strcpy(topic, ptrDat);
                             Send(s, "/topic %s\r\n", topic);
                             msleep(3000);
-                        } else if (pb->botNum == 0) {
+                        }
+                        else if (pb->botNum == 0) {
                             memset(topic, '\0', sizeof(topic));
-                            strcpy(topic, text);
+                            strcpy(topic, ptrDat);
                             save_cfg(pb);
                             Send(s, "/msg %s Topic is now: %s\r\n", szSpeaker, topic);
                             msleep(3000);
                         }
                     } return;
-                } else if (!strcasecmp("backup", com) && pb->botNum == 0) {
-                    if(text == NULL) {
+                }
+                else if (!strcasecmp("backup", com) && pb->botNum == 0) {
+                    if (ptrDat == NULL) {
                         Send(s, "/msg %s Backup: %s\r\n", szSpeaker, backup);
                         msleep(3000);
-                    }else {
+                    }
+                    else {
                         memset(backup, '\0', sizeof(backup));
-                        strcpy(backup, text);
+                        strcpy(backup, ptrDat);
                         save_cfg(pb);
                         Send(s, "/msg %s Backup is now: %s\r\n", szSpeaker, backup);
                         msleep(3000);
                     } return;
-                } else if (!strcasecmp("server", com) && pb->botNum == 0) {
-                    if(text == NULL) {
+                }
+                else if (!strcasecmp("server", com) && pb->botNum == 0) {
+                    if (ptrDat == NULL) {
                         Send(s, "/msg %s Server: %s\r\n", szSpeaker, pb->server);
                         msleep(3000);
                     } return;
-                } else if (!strcasecmp("threads",com) && pb->botNum == 0) {
-                    if(text == NULL) {
+                }
+                else if (!strcasecmp("threads", com) && pb->botNum == 0) {
+                    if (ptrDat == NULL) {
                         Send(s, "/msg %s Threads: %d\r\n", szSpeaker, pb->threads);
                         msleep(3000);
-                    } else {
-                        threads = atoi(text);
+                    }
+                    else {
+                        threads = atoi(ptrDat);
                         save_cfg(pb);
                         Send(s, "/msg %s Threads are now: %d\r\n", szSpeaker, threads);
                         msleep(3000);
                     } return;
-                } else if (!strcasecmp("port",com) && pb->botNum == 0) {
-                    if(text == NULL) {
+                }
+                else if (!strcasecmp("port", com) && pb->botNum == 0) {
+                    if (ptrDat == NULL) {
                         Send(s, "/msg %s Port: %d\r\n", szSpeaker, pb->port);
                         msleep(3000);
-                    } else {
-                        port = atoi(text);
+                    }
+                    else {
+                        port = atoi(ptrDat);
                         save_cfg(pb);
                         Send(s, "/msg %s Port is now: %d\r\n", szSpeaker, port);
                         msleep(3000);
                     } return;
-                } else if (!strcasecmp("delay",com) && pb->botNum == 0) {
-                    if(text == NULL) {
+                }
+                else if (!strcasecmp("delay", com) && pb->botNum == 0) {
+                    if (ptrDat == NULL) {
                         Send(s, "/msg %s Delay: %d\r\n", szSpeaker, delay);
                         msleep(3000);
-                    } else {
-                        delay = atoi(text);
+                    }
+                    else {
+                        delay = atoi(ptrDat);
                         save_cfg(pb);
                         Send(s, "/msg %s Delay is now: %d\r\n", szSpeaker, delay);
                         msleep(3000);
                     } return;
-                } else if (!strcasecmp("delay2",com)) {
-                    if(text == NULL) {
+                }
+                else if (!strcasecmp("delay2", com)) {
+                    if (ptrDat == NULL) {
                         Send(s, "/msg %s Actual delay (with scatter) %d\r\n", szSpeaker, pb->delay2);
                         msleep(3000);
                     } return;
-                } else if (!strcasecmp("scatter",com) && pb->botNum == 0) {
-                    if(text == NULL) {
+                }
+                else if (!strcasecmp("scatter", com) && pb->botNum == 0) {
+                    if (ptrDat == NULL) {
                         Send(s, "/msg %s Scatter: %d\r\n", szSpeaker, scatter);
                         msleep(3000);
-                    } else {
-                        scatter = atoi(text);
+                    }
+                    else {
+                        scatter = atoi(ptrDat);
                         save_cfg(pb);
                         Send(s, "/msg %s Scatter is now: %d\r\n", szSpeaker, scatter);
                         msleep(3000);
                     } return;
-                } else if (!strcasecmp("banwait",com) && pb->botNum == 0) {
-                    if (text == NULL) {
+                }
+                else if (!strcasecmp("banwait", com) && pb->botNum == 0) {
+                    if (ptrDat == NULL) {
                         Send(s, "/msg %s Ban Wait: %d\r\n", szSpeaker, banWait);
                         msleep(3000);
-                    } else {
-                        banWait = atoi(text)*1000;
+                    }
+                    else {
+                        banWait = atoi(ptrDat) * 1000;
                         save_cfg(pb);
                         Send(s, "/msg %s Ban Wait is now: %d seconds.\r\n", szSpeaker, banWait / 1000);
                         msleep(3000);
                     } return;
-                } else if (!strcasecmp("conwait",com) && pb->botNum == 0) {
-                    if(text == NULL) {
+                }
+                else if (!strcasecmp("conwait", com) && pb->botNum == 0) {
+                    if (ptrDat == NULL) {
                         Send(s, "/msg %s conWait: %d\r\n", szSpeaker, conWait);
                         msleep(3000);
-                    }else {
-                        conWait = atoi(text);
+                    }
+                    else {
+                        conWait = atoi(ptrDat);
                         save_cfg(pb);
                         Send(s, "/msg %s conWait is now: %d\r\n", szSpeaker, conWait);
                         msleep(3000);
                     } return;
-                } else if (!strcasecmp("say", com) && text!=NULL) {
-                    Send( s, "%s\r\n", text);
+                }
+                else if (!strcasecmp("say", com) && ptrDat != NULL) {
+                    Send(s, "%s\r\n", ptrDat);
                     msleep(3000);
                     return;
-                } else if (!strcasecmp("ver",com) && pb->botNum == 0) {
+                }
+                else if (!strcasecmp("ver", com) && pb->botNum == 0) {
                     Send(s, "/msg %s FuKeRy | v3.0\r\n", szSpeaker);
                     msleep(3000);
                     return;
-                } else if (!strcasecmp("quit",com))
+                }
+                else if (!strcasecmp("quit", com))
                     exit(0);
-                else if (!strcasecmp("recon",com)) {
+                else if (!strcasecmp("recon", com)) {
                     close(s);
                     return;
-                } else if (!strcasecmp("place",com)) {
+                }
+                else if (!strcasecmp("place", com)) {
                     Send(s, "/msg %s %d to login to %s with actual delay of %d.\r\n", szSpeaker, pb->place, pb->server, pb->delay2);
                     msleep(3000);
                     return;
-                } else if (!strcasecmp("ping",com) && pb->botNum == 0) {
+                }
+                else if (!strcasecmp("ping", com) && pb->botNum == 0) {
                     memset(pingStr, '\0', sizeof(pingStr));
                     sprintf(pingStr, "ping -c1 %s", pb->server);
-                    fp1 = popen(pingStr,"r");
-                    fgets(pi,512,fp1);
-                    fgets(pi,512,fp1);
-                    Send(s, "%s\r\n",pi);
+                    fp1 = popen(pingStr, "r");
+                    fgets(pi, 512, fp1);
+                    fgets(pi, 512, fp1);
+                    Send(s, "%s\r\n", pi);
                     fclose(fp1);
                     msleep(3000);
                     return;
-                } else if ( !strcasecmp( com, "ban" ) && text != NULL && pb->hasop==1) {
-                    Send( s, "/ban %s\r\n", text);
+                }
+                else if (!strcasecmp(com, "ban") && ptrDat != NULL && pb->hasop == 1) {
+                    Send(s, "/ban %s\r\n", ptrDat);
                     msleep(3000);
                     return;
-                } else if ( !strcasecmp( com, "unban" )&& text != NULL && pb->hasop==1) {
-                    pb->lockdown=0;
-                    Send( s, "/unban %s\r\n", text );
+                }
+                else if (!strcasecmp(com, "unban") && ptrDat != NULL && pb->hasop == 1) {
+                    pb->lockdown = 0;
+                    Send(s, "/unban %s\r\n", ptrDat);
                     msleep(3000);
                     return;
-                } else if ( !strcasecmp( com, "kick" ) && text != NULL && pb->hasop==1) {
-                    Send( s, "/kick %s\r\n", text );
+                }
+                else if (!strcasecmp(com, "kick") && ptrDat != NULL && pb->hasop == 1) {
+                    Send(s, "/kick %s\r\n", ptrDat);
                     msleep(3000);
                     return;
-                } else if ( !strcasecmp( com, "join" ) && text!=NULL ) {
-                    Send( s, "/join %s\r\n", text );
+                }
+                else if (!strcasecmp(com, "join") && ptrDat != NULL) {
+                    Send(s, "/join %s\r\n", ptrDat);
                     msleep(3000);
                     return;
-                } else if ( !strcasecmp( com, "rejoin") ) {
-                    Send( s, "/rejoin\r\n");
+                }
+                else if (!strcasecmp(com, "rejoin")) {
+                    Send(s, "/rejoin\r\n");
                     msleep(3000);
                     return;
-                } else if ( !strcasecmp( com, "des" ) && pb->hasop==1) {
-                    pb->op=0;
-                    if (text!=NULL) {
-                        Send( s, "/designate %s\r\n", text );
+                }
+                else if (!strcasecmp(com, "des") && pb->hasop == 1) {
+                    pb->op = 0;
+                    if (ptrDat != NULL) {
+                        Send(s, "/designate %s\r\n", ptrDat);
                         msleep(3000);
-                    } else {
+                    }
+                    else {
                         Send(s, "/designate %s\r\n", szSpeaker);
                         msleep(3000);
                     } return;
-                } else if ( !strcasecmp( com, "resign" )  && pb->hasop==1) {
-                    if (pb->des!=0) {
-                        pb->des=0;
-                        Send( s, "/resign\r\n");
+                }
+                else if (!strcasecmp(com, "resign") && pb->hasop == 1) {
+                    if (pb->des != 0) {
+                        pb->des = 0;
+                        Send(s, "/resign\r\n");
                         msleep(3000);
-                    } else {
+                    }
+                    else {
                         Send(s, "No heir to your throne.\r\n");
                         msleep(3000);
                     } return;
-                } else if ( !strcasecmp( com, "uptime") && pb->botNum == 0) {
-                    Send( s, "/uptime\r\n");
+                }
+                else if (!strcasecmp(com, "uptime") && pb->botNum == 0) {
+                    Send(s, "/uptime\r\n");
                     msleep(3000);
                     return;
-                } else if ( !strcasecmp( com, "op" ) && pb->hasop==1) {
-                    pb->op=1;
-                    if(text!=NULL)
-                        Send( s, "/designate %s\r\n", text );
+                }
+                else if (!strcasecmp(com, "op") && pb->hasop == 1) {
+                    pb->op = 1;
+                    if (ptrDat != NULL)
+                        Send(s, "/designate %s\r\n", ptrDat);
                     else
-                        Send( s, "/designate %s\r\n", szSpeaker );
+                        Send(s, "/designate %s\r\n", szSpeaker);
                     msleep(3000);
                     return;
-                } else if ( !strcasecmp( com, "lock" ) && pb->hasop==1) {
-                    pb->lockdown=1;
+                }
+                else if (!strcasecmp(com, "lock") && pb->hasop == 1) {
+                    pb->lockdown = 1;
                     Send(s, "/topic %s (Channel Locked)\r\n", topic);
                     msleep(3000);
-                    Send( s, "/who %s\r\n", pb->currChan);
+                    Send(s, "/who %s\r\n", pb->currChan);
                     msleep(3000);
                     return;
-                } else if ( !strcasecmp( com, "unlock" )) {
-                    pb->lockdown=0;
-                    if (pb->hasop==1) {
+                }
+                else if (!strcasecmp(com, "unlock")) {
+                    pb->lockdown = 0;
+                    if (pb->hasop == 1) {
                         Send(s, "/topic %s\r\n", topic);
                         msleep(3000);
                     } return;
-                } else if ( !strcasecmp( com, "clean" ) && pb->hasop==1) {
-                    Send( s, "/who %s\r\n", pb->currChan);
+                }
+                else if (!strcasecmp(com, "clean") && pb->hasop == 1) {
+                    Send(s, "/who %s\r\n", pb->currChan);
                     msleep(3000);
                     return;
-                } else if ( !strcasecmp( com, "tag" ) && pb->hasop==1) {
-                    if (text != NULL) {
+                }
+                else if (!strcasecmp(com, "tag") && pb->hasop == 1) {
+                    if (ptrDat != NULL) {
                         pb->tban = 1;
                         memset(tag, '\0', sizeof(tag));
-                        strcpy(tag, text);
-                        Send( s, "/who %s\r\n", pb->currChan);
+                        strcpy(tag, ptrDat);
+                        Send(s, "/who %s\r\n", pb->currChan);
                         msleep(3000);
-                    } else {
+                    }
+                    else {
                         pb->tban = 0;
                         Send(s, "Tagban disabled.\r\n");
                         msleep(3000);
                     } return;
-                } else if ( !strcasecmp( com, "contime") && pb->botNum == 0) {
-                    Send( s, "/msg %s %d seconds to connect.\r\n",szSpeaker, pb->conTime);
+                }
+                else if (!strcasecmp(com, "contime") && pb->botNum == 0) {
+                    Send(s, "/msg %s %d seconds to connect.\r\n", szSpeaker, pb->conTime);
                     msleep(3000);
                     return;
-                } else if (!strcasecmp(com, "mem") && pb->botNum == 0) {
-                    getrusage(RUSAGE_SELF,&r_usage);
+                }
+                else if (!strcasecmp(com, "mem") && pb->botNum == 0) {
+                    getrusage(RUSAGE_SELF, &r_usage);
                     Send(s, "/msg %s Memory usage: %ld bytes\r\n", szSpeaker, r_usage.ru_maxrss);
                     msleep(3000);
                     return;
-                } else
+                }
+                else
                     return;
             }
         }
     }
 }
+
 void OnChannel(int s, struct data *pb, char *szEventText) {
     while ((*szEventText == ' '))
     	++szEventText;
