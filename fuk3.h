@@ -163,18 +163,13 @@
 #define BUFFSIZE 1024
 #define INVALID_SOCKET -1
 
+/*
+        this entire set of structs can be rammed into 1
+*/
 typedef struct {
 	char id[21];
-}masterList;
-typedef struct {
-	char id[21];
-}safeList;
-typedef struct {
-	char id[21];
-}shitList;
-typedef struct {
-	char id[21];
-}desList;
+} masterList, safeList, shitList, desList;
+
 
 shitList* shit;
 desList* des;
