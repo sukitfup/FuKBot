@@ -848,43 +848,52 @@ char *replace_str(char *str, char *orig, int rep) {
     sprintf(buffer+(p-str), "%d%s", rep, p+strlen(orig));
     return buffer;
 }
+
 int save_cfg(struct data* pb) {
-    FILE *cfg;
+    FILE* cfg;
     int i;
-    cfg = fopen("fuk.cfg", "w+");
-    fprintf(cfg, "username=%s\n", username);
-    fprintf(cfg, "password=%s\n", password);
-    fprintf(cfg, "home=%s\n", channel);
-    fprintf(cfg, "server=%s\n", server);
-    fprintf(cfg, "port=%d\n", port);
-    fprintf(cfg, "bind=%s\n", bindaddr);
-    fprintf(cfg, "trigger=%s\n", trigger);
-    fprintf(cfg, "threads=%d\n", threads);
-    fprintf(cfg, "delay=%d\n", delay);
-    fprintf(cfg, "scatter=%d\n", scatter);
-    fprintf(cfg, "conwait=%d\n", conWait);
-    fprintf(cfg, "banwait=%d\n", banWait);
-    fprintf(cfg, "numbots=%d\n", numBots);
-    fprintf(cfg, "backupchan=%s\n", backup);
-    fprintf(cfg, "topic=%s\n", topic);
+    cfg = fopen(FUK_CFG, FUK_CFG_WRITE);
+    if (!cfg) {
+        printf(FUK_CFG_ERROR_O, FUK_CFG);
+        return -1;
+    }
+
+    fprintf(cfg, FUK_CFG_PRINTFS, CFGSTUFF_USERNAME, username);
+    fprintf(cfg, FUK_CFG_PRINTFS, CFGSTUFF_PASSWORD, password);
+    fprintf(cfg, FUK_CFG_PRINTFS, CFGSTUFF_HOME, channel);
+    fprintf(cfg, FUK_CFG_PRINTFS, CFGSTUFF_SERVER, server);
+    fprintf(cfg, FUK_CFG_PRINTFI, CFGSTUFF_PORT, port);
+    fprintf(cfg, FUK_CFG_PRINTFS, CFGSTUFF_BIND, bindaddr);
+    fprintf(cfg, FUK_CFG_PRINTFS, CFGSTUFF_TRIGGER, trigger);
+    fprintf(cfg, FUK_CFG_PRINTFI, CFGSTUFF_THREADS, threads);
+    fprintf(cfg, FUK_CFG_PRINTFI, CFGSTUFF_DELAY, delay);
+    fprintf(cfg, FUK_CFG_PRINTFI, CFGSTUFF_SCATTER, scatter);
+    fprintf(cfg, FUK_CFG_PRINTFI, CFGSTUFF_CONWAIT, conWait);
+    fprintf(cfg, FUK_CFG_PRINTFI, CFGSTUFF_BANWAIT, banWait);
+    fprintf(cfg, FUK_CFG_PRINTFI, CFGSTUFF_NUMBOTS, numBots);
+    fprintf(cfg, FUK_CFG_PRINTFS, CFGSTUFF_BACKUPCHAN, backup);
+    fprintf(cfg, FUK_CFG_PRINTFS, CFGSTUFF_TOPIC, topic);
     fprintf(cfg, "\n");
     for (i = 0; i < masterSz; i++) {
-        fprintf(cfg, "master=%s\n", master[i].id);
+        fprintf(cfg, FUK_CFG_PRINTFS, CFGSTUFF_MASTER, master[i].id);
     }
     fprintf(cfg, "\n");
     for (i = 0; i < safeSz; i++) {
-        fprintf(cfg, "safe=%s\n", safe[i].id);
+        fprintf(cfg, FUK_CFG_PRINTFS, CFGSTUFF_SAFE, safe[i].id);
     }
     fprintf(cfg, "\n");
     for (i = 0; i < desSz; i++) {
-        fprintf(cfg, "des=%s\n", des[i].id);
+        fprintf(cfg, FUK_CFG_PRINTFS, CFGSTUFF_DES, des[i].id);
     }
     fprintf(cfg, "\n");
     for (i = 0; i < shitSz; i++) {
-        fprintf(cfg, "shit=%s\n", shit[i].id);
+        fprintf(cfg, FUK_CFG_PRINTFS, CFGSTUFF_SHIT, shit[i].id);
     }
     fclose(cfg);
+
+    return TRUE;
 }
+
 int read_config() {
 	FILE *cfg;
 	int i = 0;
