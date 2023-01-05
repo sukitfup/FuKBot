@@ -110,7 +110,8 @@
 #pragma endregion
 
 #pragma region "Join,Flags,Talk formatting"
-	#define ON_COMMAND_REPLY_0  "/%s %s %s%s%s\r\n"
+	#define ON_COMMAND_REPLY_0S  "/%s %s %s%s%s\r\n"
+	#define ON_COMMAND_REPLY_0I  "/%s %s %s%s%d\r\n"
 	#define ON_COMMAND_REPLY_1  "/%s %s Actual %s (with %s): %d\r\n"
 	#define ON_COMMAND_REPLY_2  SERVER_BASE_SPEAK
 	#define ON_COMMAND_REPLY_3  "/%s %s %d seconds to connect.\r\n"
@@ -154,6 +155,7 @@
 	#define FUK_CFG_BANWAIT		(CFGSTUFF_BANWAIT FUK_CFG_EQUIL)
 	#define FUK_CFG_CONWAIT		(CFGSTUFF_CONWAIT FUK_CFG_EQUIL)
 	#define FUK_CFG_NUMBOTS		(CFGSTUFF_NUMBOTS FUK_CFG_EQUIL)
+	#define FUK_CFG_BIND		(CFGSTUFF_BIND FUK_CFG_EQUIL)
 
 #pragma endregion
 
