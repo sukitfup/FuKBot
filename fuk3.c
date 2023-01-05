@@ -174,7 +174,7 @@ void cfgStuff(int s, struct data* pb, char* com, char* text) {
     }
 }
 
-void OnJoin(int s, data* pb, char* szSpeaker) {
+void OnJoin(int s, struct data* pb, char* szSpeaker) {
     if (pb->hasop == 1 && time(NULL) - pb->lastTime < 5)
         pb->flood++;
     else
