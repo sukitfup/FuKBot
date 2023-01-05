@@ -174,49 +174,50 @@ void cfgStuff(int s, data* pb, char* com, char* text) {
     }
 }
 
-void OnJoin(int s, struct data *pb, char *szSpeaker) {
-    if (pb->hasop==1 && time(NULL) - pb->lastTime < 5)
+void OnJoin(int s, struct data* pb, char* szSpeaker) {
+    if (pb->hasop == 1 && time(NULL) - pb->lastTime < 5)
         pb->flood++;
     else
         pb->flood = 0;
     pb->lastTime = time(NULL);
-    if (pb->hasop==1 && pb->flood < 500) {
-        for (int d=0; d < desSz; d++) {
-            if(!strcasecmp(szSpeaker, des[d].id)) {
-                Send(s, "/designate %s\r\n", szSpeaker);
+    if (pb->hasop == 1 && pb->flood < 500) {
+        for (int d = 0; d < desSz; d++) {
+            if (!strcasecmp(szSpeaker, des[d].id)) {
+                Send(s, ONJOIN_SEND_FORMATTING, BASE_DESIGNATE, szSpeaker);
                 msleep(3000);
-		        return;
+                return;
             }
         }
-        for(int j=0; j < safeSz; j++) {
-            if(strstr(szSpeaker, safe[j].id))
+        for (int j = 0; j < safeSz; j++) {
+            if (strstr(szSpeaker, safe[j].id))
                 return;
         }
-        for(int k=0; k < masterSz; k++) {
-            if(!strcasecmp(szSpeaker, master[k].id))
+        for (int k = 0; k < masterSz; k++) {
+            if (!strcasecmp(szSpeaker, master[k].id))
                 return;
         }
-        if (pb->tban==1) {
-            if(strstr(szSpeaker, tag)) {
-                Send(s, "/ban %s\r\n", szSpeaker);
+        if (pb->tban == 1) {
+            if (strstr(szSpeaker, tag)) {
+                Send(s, ONJOIN_SEND_FORMATTING, BASE_BAN, szSpeaker);
                 msleep(banWait * 1000);
                 return;
             }
         }
         if (pb->lockdown == 1) {
-            Send(s, "/ban %s\r\n", szSpeaker);
+            Send(s, ONJOIN_SEND_FORMATTING, BASE_BAN, szSpeaker);
             msleep(banWait * 1000);
             return;
         }
-        for(int l=0; l < shitSz; l++) {
-            if(strstr(szSpeaker, shit[l].id)) {
-                Send(s, "/ban %s\r\n", szSpeaker);
+        for (int l = 0; l < shitSz; l++) {
+            if (strstr(szSpeaker, shit[l].id)) {
+                Send(s, ONJOIN_SEND_FORMATTING, BASE_BAN, szSpeaker);
                 msleep(banWait * 1000);
                 return;
             }
         }
-    } return;
-}
+    } 
+} /* dont need to return at the end of a void function */
+
 void OnUserFlags(int s, struct data *pb, char *szSpeaker, u_long uFlags) {
     if (uFlags==18 && !strcasecmp(pb->username, szSpeaker)){
         pb->hasop=1;
