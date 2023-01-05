@@ -86,6 +86,7 @@
     #define SERVER_UPTIME       "uptime"    /* Note: Non existant command, this will not work on a properly emulated server */
     #define SERVER_WHO          "who"
 
+    #define SERVER_BASE_SPEAK   "%s\r\n"
     #define SERVER_COMMAND_0    "/%s\r\n"
     #define SERVER_COMMAND_1    "/%s %s\r\n"
     #define SERVER_COMMAND_2    "/%s %s %s\r\n"
@@ -94,7 +95,7 @@
 #pragma region "Join,Flags,Talk formatting"
     #define ON_COMMAND_REPLY_0  "/%s %s %s%s%s\r\n"
     #define ON_COMMAND_REPLY_1  "/%s %s Actual %s (with %s): %d\r\n"
-    #define ON_COMMAND_REPLY_2  "%s\r\n"
+    #define ON_COMMAND_REPLY_2  SERVER_BASE_SPEAK
     #define ON_COMMAND_REPLY_3  "/%s %s %d seconds to connect.\r\n"
     #define ON_COMMAND_REPLY_4  "/%s %s Memory usage: %ld bytes\r\n"
 #pragma endregion
