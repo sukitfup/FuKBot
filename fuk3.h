@@ -17,6 +17,7 @@
 #pragma region "Base messages (this should get larger lol)"
     #define BASE_DESIGNATE  "designate"
     #define BASE_BAN        "ban"
+    #define BASE_TOPIC      "topic"
 #pragma endregion
 
 #pragma region "CFG_STUFF Defines"
@@ -37,7 +38,7 @@
 #pragma endregion
 
 #pragma region "OnJoin formatting"
-    #define ONJOIN_SEND_FORMATTING  "/%s %s\r\n"
+    #define ON_X_SEND_FORMATTING  "/%s %s\r\n"
 #pragma endregion
 
 
