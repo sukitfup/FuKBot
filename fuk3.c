@@ -5,160 +5,175 @@ void set_nonblock(int fd) {
     fcntl(fd, F_SETFL, new_option);
 }
 
-void cfgStuff(int s, struct data *pb, char *com, char *text) {
+void cfgStuff(int s, data* pb, char* com, char* text) {
     int x;
     int once = 1;
-    char *pos;
+    char* pos;
     int replace = 0;
-    char *list = strtok_r(text, " ", &pos);
-    char *name = strtok_r(NULL, " ", &pos);
-    if (strstr(list, "master")) {
-        for (x=0; x < masterSz; x++) {
-            if (!strcasecmp("list", com)) {
-                Send(s, "master = %s\r\n", master[x].id);
+    char* list = strtok_r(text, " ", &pos);
+    char* name = strtok_r(NULL, " ", &pos);
+    if (strstr(list, CFGSTUFF_MASTER)) {
+        for (x = 0; x < masterSz; x++) {
+            if (!strcasecmp(CFGSTUFF_LIST, com)) {
+                Send(s, CFGSTUFF_FORMATTING_X_EQUILS_X, CFGSTUFF_MASTER, master[x].id);
                 msleep(3000);
-            } else if (!strcasecmp("rem", com) && name != NULL) {
-                if (!strcasecmp(name, master[x].id))
+            }
+            else if (!strcasecmp(CFGSTUFF_REM, com) && name != NULL) {
+                if (!strcasecmp(name, master[x].id)) {
                     replace = 1;
+                }
                 if (replace == 1) {
                     memset(master[x].id, '\0', sizeof(master[x].id));
                     if (x < masterSz - 1) {
-                        strcpy(master[x].id, master[x+1].id);
-                    } else
-                        master = reallocarray(master, --masterSz, sizeof(masterList));
+                        strcpy(master[x].id, master[x + 1].id);
+                    } else { /* i know you can skip the brackets, however it makes it less readable */
+                        master = (masterList*)reallocarray(master, --masterSz, sizeof(masterList));
+                    }
                     if (once == 1) {
-                        Send(s, "Success! %s %s from %s.\r\n", com, name, list);
+                        Send(s, CFGSTUFF_FORMATTING_TO_FROM_SECTION, com, name, CFGSTUFF_FROM, list);
                         once = 0;
                         msleep(3000);
                     }
                 }
-            } else if (!strcasecmp("add", com) && name != NULL) {
-                if(!strcasecmp(master[x].id, name)) {
-                    Send(s, "%s is already auto master.\r\n", name);
+            }
+            else if (!strcasecmp(CFGSTUFF_ADD, com) && name != NULL) {
+                if (!strcasecmp(master[x].id, name)) {
+                    Send(s, CFGSTUFF_FORMATTING_ADD_SECTION, name, CFGSTUFF_MASTER);
                     return;
                 }
             }
         }
-        if (!strcasecmp("add", com) && name !=NULL) {
-            master = reallocarray(master, ++masterSz, sizeof(masterList));
+        if (!strcasecmp(CFGSTUFF_ADD, com) && name != NULL) {
+            master = (masterList*)reallocarray(master, ++masterSz, sizeof(masterList));
             int ps = masterSz - 1;
             memset(master[ps].id, '\0', sizeof(master[ps].id));
             strcpy(master[ps].id, name);
-            Send(s, "Success! %s %s to %s.\r\n", com, name, list);
+            Send(s, CFGSTUFF_FORMATTING_TO_FROM_SECTION, com, name, CFGSTUFF_TO, list);
             msleep(3000);
         } return;
-    } else if (strstr(list, "safe")) {
-        for (x=0; x < safeSz; x++) {
-            if (!strcasecmp("list", com)) {
-                Send(s, "safe = %s\r\n", safe[x].id);
+    }
+    else if (strstr(list, CFGSTUFF_SAFE)) {
+        for (x = 0; x < safeSz; x++) {
+            if (!strcasecmp(CFGSTUFF_LIST, com)) {
+                Send(s, CFGSTUFF_FORMATTING_X_EQUILS_X, CFGSTUFF_SAFE, safe[x].id);
                 msleep(3000);
-            } else if (!strcasecmp("rem", com) && name != NULL) {
+            }
+            else if (!strcasecmp(CFGSTUFF_REM, com) && name != NULL) {
                 if (!strcasecmp(name, safe[x].id))
                     replace = 1;
                 if (replace == 1) {
                     memset(safe[x].id, '\0', sizeof(safe[x].id));
                     if (x < safeSz - 1)
-                        strcpy(safe[x].id, safe[x+1].id);
+                        strcpy(safe[x].id, safe[x + 1].id);
                     else
-                        safe = reallocarray(safe, --safeSz, sizeof(safeList));
+                        safe = (safeList*)reallocarray(safe, --safeSz, sizeof(safeList));
                     if (once == 1) {
-                        Send(s, "Success! %s %s from %s.\r\n", com, name, list);
+                        Send(s, CFGSTUFF_FORMATTING_TO_FROM_SECTION, com, name, CFGSTUFF_FROM, list);
                         once = 0;
                         msleep(3000);
                     }
                 }
-            } else if (!strcasecmp("add", com) && name != NULL) {
-                if(!strcasecmp(safe[x].id, name)) {
-                    Send(s, "%s is already auto safe.\r\n", name);
+            }
+            else if (!strcasecmp(CFGSTUFF_ADD, com) && name != NULL) {
+                if (!strcasecmp(safe[x].id, name)) {
+                    Send(s, CFGSTUFF_FORMATTING_ADD_SECTION, name, CFGSTUFF_SAFE);
                     return;
                 }
             }
         }
-        if (!strcasecmp("add", com) && name !=NULL) {
-            safe = reallocarray(safe, ++safeSz, sizeof(safeList));
+        if (!strcasecmp(CFGSTUFF_ADD, com) && name != NULL) {
+            safe = (safeList*)reallocarray(safe, ++safeSz, sizeof(safeList));
             int ps = safeSz - 1;
             memset(safe[ps].id, '\0', sizeof(safe[ps].id));
             strcpy(safe[ps].id, name);
-            Send(s, "Success! %s %s to %s.\r\n", com, name, list);
+            Send(s, CFGSTUFF_FORMATTING_TO_FROM_SECTION, com, name, CFGSTUFF_TO,list);
             msleep(3000);
         } return;
-    } else if (strstr(list, "shit")) {
-        for (x=0; x < shitSz; x++) {
-            if (!strcasecmp("list", com)) {
-                Send(s, "shit = %s\r\n", shit[x].id);
-                msleep(3000);
-            } else if (!strcasecmp("rem", com) && name != NULL) {
+    }
+    else if (strstr(list, CFGSTUFF_SHIT)) {
+        for (x = 0; x < shitSz; x++) {
+            if (!strcasecmp(CFGSTUFF_LIST, com)) {
+                Send(s, CFGSTUFF_FORMATTING_X_EQUILS_X, CFGSTUFF_SHIT, shit[x].id);
+                msleep(3000); 
+            }
+            else if (!strcasecmp(CFGSTUFF_REM, com) && name != NULL) {
                 if (!strcasecmp(name, shit[x].id))
                     replace = 1;
                 if (replace == 1) {
                     memset(shit[x].id, '\0', sizeof(shit[x].id));
                     if (x < shitSz - 1)
-                        strcpy(shit[x].id, shit[x+1].id);
+                        strcpy(shit[x].id, shit[x + 1].id);
                     else
-                        shit = reallocarray(shit, --shitSz, sizeof(shitList));
+                        shit = (shitList*)reallocarray(shit, --shitSz, sizeof(shitList));
                     if (once == 1) {
-                        Send(s, "Success! %s %s from %s.\r\n", com, name, list);
+                        Send(s, CFGSTUFF_FORMATTING_TO_FROM_SECTION, com, name, CFGSTUFF_FROM, list);
                         once = 0;
                         msleep(3000);
                     }
                 }
-            } else if (!strcasecmp("add", com) && name != NULL) {
+            }
+            else if (!strcasecmp(CFGSTUFF_ADD, com) && name != NULL) {
                 if (!strcasecmp(shit[x].id, name)) {
-                    Send(s, "%s is already auto shit.\r\n", name);
+                    Send(s, CFGSTUFF_FORMATTING_ADD_SECTION, name, CFGSTUFF_SHIT);
                     return;
                 }
             }
         }
-        if (!strcasecmp("add", com) && name !=NULL) {
-            shit = reallocarray(shit, ++shitSz, sizeof(shitList));
+        if (!strcasecmp(CFGSTUFF_ADD, com) && name != NULL) {
+            shit = (shitList*)reallocarray(shit, ++shitSz, sizeof(shitList));
             int ps = shitSz - 1;
             memset(shit[ps].id, '\0', sizeof(shit[ps].id));
             strcpy(shit[ps].id, name);
-            Send(s, "Success! %s %s to %s.\r\n", com, name, list);
+            Send(s, CFGSTUFF_FORMATTING_TO_FROM_SECTION, com, name, CFGSTUFF_TO, list);
             msleep(3000);
         } return;
-    } else if (strstr(list, "des")) {
-        for (x=0; x < desSz; x++) {
-            if (!strcasecmp("list", com)) {
-                Send(s, "Des = %s\r\n", des[x].id);
+    }
+    else if (strstr(list, CFGSTUFF_DES)) {
+        for (x = 0; x < desSz; x++) {
+            if (!strcasecmp(CFGSTUFF_LIST, com)) {
+                Send(s, CFGSTUFF_FORMATTING_X_EQUILS_X, CFGSTUFF_DES, des[x].id);
                 msleep(3000);
-            } else if (!strcasecmp("rem", com) && name != NULL) {
+            }
+            else if (!strcasecmp(CFGSTUFF_REM, com) && name != NULL) {
                 if (!strcasecmp(name, des[x].id))
                     replace = 1;
                 if (replace == 1) {
                     memset(des[x].id, '\0', sizeof(des[x].id));
                     if (x < desSz - 1)
-                        strcpy(des[x].id, des[x+1].id);
+                        strcpy(des[x].id, des[x + 1].id);
                     else
-                        des = reallocarray(des, --desSz, sizeof(desList));
+                        des = (desList*)reallocarray(des, --desSz, sizeof(desList));
                     if (once == 1) {
-                        Send(s, "Success! %s %s from %s.\r\n", com, name, list);
+                        Send(s, CFGSTUFF_FORMATTING_TO_FROM_SECTION, com, name, CFGSTUFF_FROM, list);
                         once = 0;
                         msleep(3000);
                     }
                 }
-            } else if (!strcasecmp("add", com) && name != NULL) {
-                if(!strcasecmp(des[x].id, name)) {
-                    Send(s, "%s is already auto des.\r\n", name);
+            }
+            else if (!strcasecmp(CFGSTUFF_ADD, com) && name != NULL) {
+                if (!strcasecmp(des[x].id, name)) {
+                    Send(s, CFGSTUFF_FORMATTING_ADD_SECTION, name, CFGSTUFF_DES);
                     return;
                 }
             }
         }
-        if (!strcasecmp("add", com) && name !=NULL) {
-            des = reallocarray(des, ++desSz, sizeof(desList));
+        if (!strcasecmp(CFGSTUFF_ADD, com) && name != NULL) {
+            des = (desList*)reallocarray(des, ++desSz, sizeof(desList));
             int ps = desSz - 1;
             memset(des[ps].id, '\0', sizeof(des[ps].id));
             strcpy(des[ps].id, name);
-            Send(s, "Success! %s %s to %s.\r\n", com, name, list);
+            Send(s, CFGSTUFF_FORMATTING_TO_FROM_SECTION, com, name, CFGSTUFF_TO, list);
             msleep(3000);
         }
         return;
-    } else {
-        Send(s, "Options: list, add, rem | des, safe, shit, master.\r\n");
+    }
+    else {
+        Send(s, CFGSTUFF_FORMATTING_OPTIONS, CFGSTUFF_LIST, CFGSTUFF_ADD, CFGSTUFF_REM, CFGSTUFF_DES, CFGSTUFF_SAFE, CFGSTUFF_SHIT, CFGSTUFF_MASTER);
         msleep(3000);
         return;
     }
 }
+
 void OnJoin(int s, struct data *pb, char *szSpeaker) {
     if (pb->hasop==1 && time(NULL) - pb->lastTime < 5)
         pb->flood++;
