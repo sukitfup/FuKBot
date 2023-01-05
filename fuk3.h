@@ -88,7 +88,7 @@
     #define SERVER_JOIN         "join"
     #define SERVER_REJOIN       "rejoin"    /* Note: Non existant command, this will not work on a properly emulated server */
     #define SERVER_DESIGNATE    BASE_DESIGNATE
-    #define SERVER_TOPIC        BASE_TOPIC
+    #define SERVER_TOPIC        BASE_TOPIC  /* Note: Non existant command, this will not work on a properly emulated server */
     #define SERVER_RESIGN       "resign"
     #define SERVER_UPTIME       "uptime"    /* Note: Non existant command, this will not work on a properly emulated server */
     #define SERVER_WHO          "who"
