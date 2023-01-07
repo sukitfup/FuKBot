@@ -1056,7 +1056,7 @@ void create_threads(struct data *pb) {
     numThreads = numBots * threads;
     pthread_t thread[numThreads];
     for (int t = 0; t < numBots; t++, pb++) {
-        static char *replaced = replace_str(username, (char*)"#", t);
+        char *replaced = replace_str(username, (char*)"#", t); /* should not be static lol that may have been my bad there */
         char locName[20] = { 0 };
         memcpy(locName, replaced, strlen(replaced));
 	memset(pb->username, '\0', sizeof(pb->username));
