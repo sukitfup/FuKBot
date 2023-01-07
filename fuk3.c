@@ -1056,14 +1056,19 @@ void create_threads(struct data *pb) {
     numThreads = numBots * threads;
     pthread_t thread[numThreads];
     for (int t = 0; t < numBots; t++, pb++) {
-        char *thisBotsName = strdup(replace_str(username, "#", t));
-        if (strcmp(pb->username, thisBotsName) != 0) {
-            strcpy(pb->username, thisBotsName);
-            strcpy(pb->password, password);
-            strcpy(pb->channel, channel);
-            strcpy(pb->server, server);
-            strcpy(pb->trigger, trigger);
-        }
+        static char *replaced = replace_str(username, (char*)"#", t);
+        char locName[20] = { 0 };
+        memcpy(locName, replaced, strlen(replaced));
+	memset(pb->username, '\0', sizeof(pb->username));
+        strcpy(pb->username, locName);
+	memset(pb->password, '\0', sizeof(pb->password));
+        strcpy(pb->password, password);
+	memset(pb->channel, '\0', sizeof(pb->channel));
+        strcpy(pb->channel, channel);
+	memset(pb->server, '\0', sizeof(pb->server));
+        strcpy(pb->server, server);
+	memset(pb->trigger, '\0', sizeof(pb->trigger));
+        strcpy(pb->trigger, trigger);
         pb->botNum = t;
         pb->port = port;
         pb->threads = threads;

@@ -7,3 +7,7 @@ Git hub will compile every push to the fork, ill create a dev fork later for add
 
 ## Compile Note the (Checkmark) = good compile.
 Currently according to GitHub actions will compile for the latest Ubuntu.
+
+### Referances
+  - https://github.com/fjaros/init6/tree/master/src/main/scala/com/init6
+  - ...
