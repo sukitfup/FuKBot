@@ -1129,24 +1129,28 @@ void create_threads(struct data *pb) {
     }
     msleep(conWait * 1000);
 }
+
 int main() {
-    printf("FuKeRy | v3.0\n");
-    printf("PID: %d\n",getpid() + 1);
-    if ((main_pid = fork())==-1) {
+    printf("%s\n", FUK_VERSION);
+    printf("PID: %d\n", getpid() + 1);
+    if ((main_pid = fork()) == -1) {
         printf("shutting down: unable to fork\n");
         exit(1);
+        return 1; /* if fork failed shouldent need to exit() though i could be wrong lol */
     }
-    if(main_pid!=0)
+    if (main_pid != 0) {
         return 0;
-    int try_read = read_config();
-    if (try_read != 0) {
+    }
+    if (read_config() != 0) {
         perror("Read config error.");
         exit(0);
+        return 0; 
     }
-    pb = (struct data *)calloc(numBots, sizeof(struct data));
+    pb = (struct data*)calloc(numBots, sizeof(struct data));
     while (1) {
-        startTime = time (NULL);
+        startTime = time(NULL);
         create_threads(pb);
     }
     free(pb);
+    return 0; /* need to return an integer lol */
 }
