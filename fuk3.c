@@ -1368,6 +1368,7 @@ int read_config() {
         also windows requires wsa to be initialized and destroyed to use sockets
     */
     int main() {
+        srand(time(NULL)); /* must initialize srand */
         int mainresult = 0;
         WSADATA mainSdata;
         int err = WSAStartup(2.2, &mainSdata);
@@ -1401,6 +1402,7 @@ int read_config() {
     }
 #else
     int main() {
+        srand(time(NULL)); /* must initialize srand */
         printf("%s\n", FUK_VERSION);
         printf("PID: %d\n", getpid() + 1);
         if ((main_pid = fork()) == -1) {
