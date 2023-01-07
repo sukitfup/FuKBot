@@ -472,7 +472,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText) {
                     fp1 = popen(pingStr, "r");
                     fgets(pi, 512, fp1);
                     fgets(pi, 512, fp1);
-                    Send(s, SERVER_COMMAND_0, pi);
+                    Send(s, SERVER_BASE_SPEAK, pi);
                     pclose(fp1); /* if your going to use popen, use pclose */
                     msleep(3000);
                     return;
