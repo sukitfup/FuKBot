@@ -88,6 +88,14 @@
 	#define BASE_NO_HEIR_TEXT       "No heir to your throne."
 	#define BASE_CHANLOCKED         "(Channel Locked)"
 	#define BASE_TAGBAN_DISABLED    "Tagban disabled."
+
+	/*
+		basic text
+	*/
+	#define BASE_CHANRESTRICTED_TEXT	"That channel is restricted"
+	#define BASE_INVALIDUSER_TEXT		"Invalid user"
+	#define BASE_USERNOTLOGGEDON_TEXT	"That user is not logged on"
+
 #pragma endregion
 
 #pragma region "Server Commands"
@@ -102,11 +110,17 @@
 	#define SERVER_RESIGN       "resign"
 	#define SERVER_UPTIME       "uptime"    /* Note: Non existant command, this will not work on a properly emulated server */
 	#define SERVER_WHO          "who"
+	#define SERVER_PLACE		"place"		/* Note: Non existant command, this will not work on a properly emulated server */
+	#define SERVER_PONG			"PONG"		/* Note: Non existant command, this will not work on a properly emulated server */
 
 	#define SERVER_BASE_SPEAK   "%s\r\n"
 	#define SERVER_COMMAND_0    "/%s\r\n"
 	#define SERVER_COMMAND_1    "/%s %s\r\n"
 	#define SERVER_COMMAND_2    "/%s %s %s\r\n"
+#pragma endregion
+
+#pragma region "Server Channels"
+	#define CHANNEL_VOID	"The Void"
 #pragma endregion
 
 #pragma region "Join,Flags,Talk formatting"
