@@ -947,30 +947,30 @@ int read_config() {
             strtok(r, "\r\n");
             if (!memcmp(r, FUK_CFG_USERNAME, strlen(FUK_CFG_USERNAME))) {
                 memset(username, '\0', sizeof(username));
-                strcpy(username, strdup(r + strlen(FUK_CFG_USERNAME)));
+                strcpy(username, (r + strlen(FUK_CFG_USERNAME)));
             }
             else if (!memcmp(r, FUK_CFG_PASSWORD, strlen(FUK_CFG_PASSWORD))) {
                 memset(password, '\0', sizeof(password));
-                strcpy(password, strdup(r + strlen(FUK_CFG_PASSWORD)));
+                strcpy(password, (r + strlen(FUK_CFG_PASSWORD)));
             }
             else if (!memcmp(r, FUK_CFG_HOME, strlen(FUK_CFG_HOME))) {
                 memset(channel, '\0', sizeof(channel));
-                strcpy(channel, strdup(r + strlen(FUK_CFG_HOME)));
+                strcpy(channel, (r + strlen(FUK_CFG_HOME)));
             }
             else if (!memcmp(r, FUK_CFG_SERVER, strlen(FUK_CFG_SERVER))) {
                 memset(server, '\0', sizeof(server));
-                strcpy(server, strdup(r + strlen(FUK_CFG_SERVER)));
+                strcpy(server, (r + strlen(FUK_CFG_SERVER)));
             }
             else if (!memcmp(r, FUK_CFG_PORT, strlen(FUK_CFG_PORT))) {
                 port = atoi(r + strlen(FUK_CFG_PORT));
             }
             else if (!memcmp(r, FUK_CFG_BIND, strlen(FUK_CFG_BIND))) {
                 memset(bindaddr, '\0', sizeof(server));
-                strcpy(bindaddr, strdup(r + strlen(FUK_CFG_BIND)));
+                strcpy(bindaddr, (r + strlen(FUK_CFG_BIND)));
             }
             else if (!memcmp(r, FUK_CFG_TRIGGER, strlen(FUK_CFG_TRIGGER))) {
                 memset(trigger, '\0', sizeof(trigger));
-                strcpy(trigger, strdup(r + strlen(FUK_CFG_TRIGGER)));
+                strcpy(trigger, (r + strlen(FUK_CFG_TRIGGER)));
             }
             else if (!memcmp(r, FUK_CFG_THREADS, strlen(FUK_CFG_THREADS))) {
                 threads = atoi(r + strlen(FUK_CFG_THREADS));
@@ -983,11 +983,11 @@ int read_config() {
             }
             else if (!memcmp(r, FUK_CFG_BACKUPCHAN, strlen(FUK_CFG_BACKUPCHAN))) {
                 memset(backup, '\0', sizeof(backup));
-                strcpy(backup, strdup(r + strlen(FUK_CFG_BACKUPCHAN)));
+                strcpy(backup, (r + strlen(FUK_CFG_BACKUPCHAN)));
             }
             else if (!memcmp(r, FUK_CFG_TOPIC, strlen(FUK_CFG_TOPIC))) {
                 memset(topic, '\0', sizeof(topic));
-                strcpy(topic, strdup(r + strlen(FUK_CFG_TOPIC)));
+                strcpy(topic, (r + strlen(FUK_CFG_TOPIC)));
             }
             else if (!memcmp(r, FUK_CFG_BANWAIT, strlen(FUK_CFG_BANWAIT))) {
                 banWait = atoi(r + strlen(FUK_CFG_BANWAIT));
@@ -1001,25 +1001,25 @@ int read_config() {
             else if (!memcmp(r, FUK_CFG_MASTER, strlen(FUK_CFG_MASTER))) {
                 master = (masterList*)reallocarray(master, ++masterSz, sizeof(masterList));
                 memset(master[i].id, '\0', sizeof(master[i].id));
-                strcpy(master[i].id, strdup(r + strlen(FUK_CFG_MASTER)));
+                strcpy(master[i].id, (r + strlen(FUK_CFG_MASTER)));
                 i++;
             }
             else if (!memcmp(r, FUK_CFG_SAFE, strlen(FUK_CFG_SAFE))) {
                 safe = (safeList*)reallocarray(safe, ++safeSz, sizeof(safeList));
                 memset(safe[j].id, '\0', sizeof(safe[j].id));
-                strcpy(safe[j].id, strdup(r + strlen(FUK_CFG_SAFE)));
+                strcpy(safe[j].id, (r + strlen(FUK_CFG_SAFE)));
                 j++;
             }
             else if (!memcmp(r, FUK_CFG_SHIT, strlen(FUK_CFG_SHIT))) {
                 shit = (shitList*)reallocarray(shit, ++shitSz, sizeof(shitList));
                 memset(shit[k].id, '\0', sizeof(shit[k].id));
-                strcpy(shit[k].id, strdup(r + strlen(FUK_CFG_SHIT)));
+                strcpy(shit[k].id, (r + strlen(FUK_CFG_SHIT)));
                 k++;
             }
             else if (!memcmp(r, FUK_CFG_DES, strlen(FUK_CFG_DES))) {
                 des = (desList*)reallocarray(des, ++desSz, sizeof(desList));
                 memset(des[d].id, '\0', sizeof(des[d].id));
-                strcpy(des[d].id, strdup(r + strlen(FUK_CFG_DES)));
+                strcpy(des[d].id, (r + strlen(FUK_CFG_DES)));
                 d++;
             }
         }
