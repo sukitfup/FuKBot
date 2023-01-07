@@ -1,4 +1,6 @@
 //#define WINDOWS_CPP_BUILD /* Windows CPP Compile Option (un-comment out this line if your building from windows) */
+//#define WINDOWS_CPP_32BIT /* 32 and 64 bit distinctions, only used in the version text currently */
+//#define WINDOWS_CPP_64BIT /* they also co-exist with WINDOWS_CPP_BUILD so yea */
 
 #if defined(WINDOWS_CPP_BUILD)
 	#define _CRT_SECURE_NO_WARNINGS
@@ -95,7 +97,19 @@
 /*
 	Set your version text here
 */
-#define FUK_VERSION "FuKeRy | v3.0"
+#define VERSION_TEXT "FuKeRy | v3.0"
+
+#if defined(WINDOWS_CPP_BUILD)
+	#if defined(WINDOWS_CPP_32BIT)
+		#define FUK_VERSION (VERSION_TEXT " (Win32)")
+	#endif
+	#if defined(WINDOWS_CPP_64BIT)
+		#define FUK_VERSION (VERSION_TEXT " (Win64)")
+	#endif
+#else
+	#define FUK_VERSION (VERSION_TEXT)
+#endif
+
 
 #pragma region "CFG_STUFF Defines"
 	#define CFGSTUFF_LIST       "list"
