@@ -1,17 +1,96 @@
-#include <stdio.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <limits.h>
-#include <netinet/in.h>
-#include <unistd.h>
-#include <pthread.h>
-#include <sys/resource.h>
-#include <stdlib.h>
-#include <string.h>
-#include <errno.h>
-#include <stdarg.h>
-#include <fcntl.h>
+//#define WINDOWS_CPP_BUILD /* Windows CPP Compile Option */
+
+#if defined(WINDOWS_CPP_BUILD)
+	#define _CRT_SECURE_NO_WARNINGS
+	#pragma comment(lib, "ws2_32.lib") 
+	#include <winsock2.h>
+	#include <Windows.h>
+	#include <ws2tcpip.h>
+	#include <WinInet.h>
+	#include <stdlib.h>
+	#include <stdio.h>
+	#include <string.h>
+	#include <stdarg.h>
+	#include "pthread.h"
+	#include <chrono>
+	#include <thread>
+	#include <vector>
+	#include <stdint.h>
+	#include <errno.h>
+	#include <psapi.h>
+
+	#define strncasecmp _strnicmp 
+	#define snprintf _snprintf
+	#define vsnprintf _vsnprintf
+	#define strcasecmp _stricmp
+	#define strdup _strdup
+	#define ioctl ioctlsocket
+	#define close closesocket
+	#define popen _popen
+	#define pclose _pclose
+	#define sleepextra(v) (std::this_thread::sleep_for(std::chrono::milliseconds(v)))
+	#define usleep sleepextra
+	#define msleep sleepextra
+	#define getpid GetCurrentProcessId
+
+	struct rusage {
+		struct timeval ru_utime; /* user CPU time used */
+		struct timeval ru_stime; /* system CPU time used */
+		long   ru_maxrss;        /* maximum resident set size */
+		long   ru_ixrss;         /* integral shared memory size */
+		long   ru_idrss;         /* integral unshared data size */
+		long   ru_isrss;         /* integral unshared stack size */
+		long   ru_minflt;        /* page reclaims (soft page faults) */
+		long   ru_majflt;        /* page faults (hard page faults) */
+		long   ru_nswap;         /* swaps */
+		long   ru_inblock;       /* block input operations */
+		long   ru_oublock;       /* block output operations */
+		long   ru_msgsnd;        /* IPC messages sent */
+		long   ru_msgrcv;        /* IPC messages received */
+		long   ru_nsignals;      /* signals received */
+		long   ru_nvcsw;         /* voluntary context switches */
+		long   ru_nivcsw;        /* involuntary context switches */
+	};
+
+	enum __rusage_who
+	{
+		/* The calling process.  */
+		RUSAGE_SELF = 0,
+		#define RUSAGE_SELF RUSAGE_SELF
+		/* All of its terminated child processes.  */
+		RUSAGE_CHILDREN = -1
+		#define RUSAGE_CHILDREN RUSAGE_CHILDREN
+		#ifdef __USE_GNU
+			,
+			/* The calling thread.  */
+			RUSAGE_THREAD = 1
+			# define RUSAGE_THREAD RUSAGE_THREAD
+			/* Name for the same functionality on Solaris.  */
+			# define RUSAGE_LWP RUSAGE_THREAD
+		#endif
+	};
+
+	int getrusage(int who, struct rusage* r_usageval);
+	void* ReAllocArray(void* ptr, size_t nmemb, size_t size);
+	#define reallocarray ReAllocArray
+	char* mystrsep(char** stringp, const char* delim);
+	#define strsep mystrsep
+#else
+	#include <stdio.h>
+	#include <sys/socket.h>
+	#include <netdb.h>
+	#include <arpa/inet.h>
+	#include <limits.h>
+	#include <netinet/in.h>
+	#include <unistd.h>
+	#include <pthread.h>
+	#include <sys/resource.h>
+	#include <stdlib.h>
+	#include <string.h>
+	#include <errno.h>
+	#include <stdarg.h>
+	#include <fcntl.h>	/* using ioctl in the windows build */
+#endif
 
 /*
 	Set your version text here
@@ -92,7 +171,7 @@
 	/*
 		basic text
 	*/
-	#define BASE_INIT6				"init 6"
+	#define BASE_INIT6					"init 6"
 	#define BASE_SETTHETOPIC			"set the topic"
 	#define BASE_WASKICKED				"was kicked out of the channel"
 	#define BASE_WASBANNED				"was banned by"
@@ -101,7 +180,7 @@
 	#define BASE_CHATCHANNEL			"This is a chat channel"
 	#define BASE_CHANNELUSERS			"users in channel"
 	#define BASE_NEWHEIR				"is your new designated heir"
-	#define BASE_PLACED				"You placed"
+	#define BASE_PLACED					"You placed"
 	#define BASE_CUPTIME				"Uptime"
 	#define BASE_YOUWEREKICKED			"kicked you out of the channel"
 
@@ -186,17 +265,22 @@
 
 #pragma endregion
 
-#define MAX_THREADS 16
-#define BUFFSIZE 1024
-#define INVALID_SOCKET -1
-
-/*
-        this entire set of structs can be rammed into 1
+/* 
+	Defines used by both or should be at some point
 */
+#define MAX_THREADS			16		/* probably shouldent set this so high, dont think you use it anyways though */
+#define BUFFSIZE			1024
+#if defined(WINDOWS_CPP_BUILD)
+	#define INVALID_SOCKET		SOCKET_ERROR
+#else
+	#define INVALID_SOCKET		-1
+#endif
+
+
+
 typedef struct {
 	char id[21];
 } masterList, safeList, shitList, desList;
-
 
 shitList* shit;
 desList* des;
@@ -218,7 +302,7 @@ char tag[11];
 
 struct rusage r_usage;
 
-struct data{
+struct data {
 	time_t lastTime;
 	unsigned int flood;
 	int conTime, tban, op, des, greet, botNum;
@@ -236,24 +320,28 @@ struct data{
 
 struct data *pb;
 
-void set_nonblock(int fd);
-void set_block(int fd);
-void cfgStuff(int s, struct data *pb, char *com, char *text);
-void OnJoin(int s, struct data *pb, char *szSpeaker);
-void OnUserFlags(int s, struct data *pb, char *szSpeaker, u_long uFlags);
-void OnTalk(int s, struct data *pb, char *szSpeaker, char *szEventText);
-void OnChannel(int s, struct data *pb, char *szEventText);
-void OnInfo(int s, struct data *pb, char *szEventText);
-void OnError(int s, struct data *pb, char *szEventText);
-void OnPing(int s, struct data *pb, char *szEventText);
-void Dispatch(int s, struct data *pb, char *szEventText);
-int Send(int s, const char *lpszFmt, ...); /* match vars */
-void message_loop(int s, struct data *pb);
-void msleep(unsigned long milisec);
-char *replace_str(char *str, char *orig, int rep);
+#if !defined(WINDOWS_CPP_BUILD)
+	void set_nonblock(int fd);
+	void set_block(int fd);
+#endif
+void cfgStuff(int s, struct data* pb, char* com, char* text);
+void OnJoin(int s, struct data* pb, char* szSpeaker);
+void OnUserFlags(int s, struct data* pb, char* szSpeaker, u_long uFlags);
+void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText);
+void OnChannel(int s, struct data* pb, char* szEventText);
+void OnInfo(int s, struct data* pb, char* szEventText);
+void OnError(int s, struct data* pb, char* szEventText);
+void OnPing(int s, struct data* pb, char* szEventText);
+void Dispatch(int s, struct data* pb, char* szEventText);
+int Send(int s, const char* lpszFmt, ...); /* match vars */
+void message_loop(int s, struct data* pb);
+#if !defined(WINDOWS_CPP_BUILD)
+	void msleep(unsigned long milisec);
+#endif
+char* replace_str(char* str, char* orig, int rep);
 int save_cfg(struct data* pb);
 int read_config();
 int Connect(int s, struct timeval tv, struct data* pb);
-void *thread_conn(void *arg);
-int thread_conf(struct data *pb);
-void create_threads(struct data *pb);
+void* thread_conn(void* arg);
+int thread_conf(struct data* pb);	/* this function dosent actually exist */
+void create_threads(struct data* pb);
