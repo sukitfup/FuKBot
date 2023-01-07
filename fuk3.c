@@ -1041,8 +1041,15 @@ int Connect(int s, struct timeval tv, struct data* pb) {
 	name.sin_port = htons(pb->port);
 	inet_pton(AF_INET, pb->server, &(name.sin_addr));
 	inet_pton(AF_INET, bindaddr, &(name2.sin_addr));
+	/*
+	     I need an explenation of what exactly this is doing on your system lol
+	*/
 	if (bind(s, (struct sockaddr *)&name2, sizeof(name2)) == -1)
 	    return -1;
+	/*
+	     instead of using set_nonblock(s) try using
+	     ioctl(s, FIONBIO, (u_long*)&on); this should be available to you
+	*/
 	set_nonblock(s);
 	FD_ZERO(&fdr); FD_SET(s,&fdr); fdw=fdr;
 	connect(s,(struct sockaddr *)&name,sizeof(name));
@@ -1053,6 +1060,7 @@ int Connect(int s, struct timeval tv, struct data* pb) {
 	    err= -1;
 	return err;
 }
+
 void *thread_conn(void *arg) {
     struct data* pb=(struct data *)arg;
 	struct timeval tv;
