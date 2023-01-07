@@ -591,26 +591,27 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText) {
     }
 }
 
-void OnChannel(int s, struct data *pb, char *szEventText) {
+void OnChannel(int s, struct data* pb, char* szEventText) {
     while ((*szEventText == ' '))
-    	++szEventText;
+        ++szEventText;
     memset(pb->currChan, '\0', sizeof(pb->currChan));
     strcpy(pb->currChan, szEventText);
     if (!strcasecmp(szEventText, pb->channel)) {
-        pb->chanham=0;
-        Send(s, "/place\r\n");
+        pb->chanham = 0;
+        Send(s, SERVER_COMMAND_0, SERVER_PLACE);
         msleep(3000);
         return;
-    }  else if (!strcasecmp(szEventText, "The Void")) {
+    }
+    else if (!strcasecmp(szEventText, CHANNEL_VOID)) {
         pb->chanham = 1;
-        Send(s, "/place\r\n");
+        Send(s, SERVER_COMMAND_0, SERVER_PLACE);
         msleep(3000);
-        Send(s, "/join %s\r\n", backup);
+        Send(s, SERVER_COMMAND_1, SERVER_JOIN, backup);
         msleep(3000);
         return;
-    } else
-    	return;
-}
+    }
+} /* you dont need a return at the end of a void function [remove this note if you ever revisit it] */
+
 void OnInfo(int s, struct data *pb, char *szEventText) {
     if(strstr(szEventText, "init 6"))
         return;
@@ -672,25 +673,37 @@ void OnInfo(int s, struct data *pb, char *szEventText) {
         } return;
     }
 }
+
 void OnError(int s, struct data *pb, char *szEventText) {
-    if (strstr(szEventText, "That channel is restricted"))
+    if (strstr(szEventText, BASE_CHANRESTRICTED_TEXT)) {
         return;
-    if (strstr(szEventText, "Invalid user")){
+    }
+    if (strstr(szEventText, BASE_INVALIDUSER_TEXT)){
         pb->des=0;
-        Send(s, "Invalid User.\r\n");
+        Send(s, SERVER_BASE_SPEAK, BASE_INVALIDUSER_TEXT);
         msleep(3000);
-    } return;
+        return;
+    }
+    if (strstr(szEventText, BASE_USERNOTLOGGEDON_TEXT)) {
+        pb->des=0;
+        Send(s, SERVER_BASE_SPEAK, BASE_USERNOTLOGGEDON_TEXT);
+        msleep(3000);
+        return;
+    }
 }
+
 void OnPing(int s, struct data *pb, char *szEventText) {
     if (pb->chanham==1) {
-        Send(s, "/join %s\r\n", pb->channel);
+        Send(s, SERVER_COMMAND_1, SERVER_JOIN, pb->channel);
         msleep(3000);
         return;
     } else {
-        Send(s, "/PONG %s\r\n", szEventText);
+        Send(s, SERVER_COMMAND_1, SERVER_PONG, szEventText);
         msleep(3000);
-    } return;
+        return;
+    }
 }
+
 void Dispatch(int s, struct data *pb, char *szEventText) {
     char *eventType;
     char *pos;
