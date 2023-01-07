@@ -1,4 +1,4 @@
-#include "fuk3.h"
+#include "fuk.h"
 
 #if defined(WINDOWS_CPP_BUILD)
     char* mystrsep(char** stringp, const char* delim)
@@ -557,10 +557,17 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText) {
                 }
                 else if (!strcasecmp(BASE_PING, com) && pb->botNum == 0) {
                     memset(pingStr, '\0', sizeof(pingStr));
+#if defined(WINDOWS_CPP_BUILD)
+                    sprintf(pingStr, "%s %s", BASE_PING, pb->server);
+#else
                     sprintf(pingStr, "%s -c1 %s", BASE_PING, pb->server);
+#endif
                     fp1 = popen(pingStr, "r");
                     fgets(pi, 512, fp1);
                     fgets(pi, 512, fp1);
+#if defined(WINDOWS_CPP_BUILD)
+                    fgets(pi, 512, fp1);
+#endif
                     Send(s, SERVER_BASE_SPEAK, pi);
                     pclose(fp1); /* if your going to use popen, use pclose */
                     msleep(3000);
@@ -937,7 +944,7 @@ void message_loop(int s, struct data* pb) {
             }
             nBufLen += n;
             while (nBufLen > 0) {
-#if defined(WINDOWS_CPP_BUILD)
+#ifdef _WIN32
                 unsigned char* m = (unsigned char*)stageBuf+nBufPos;
 #else
                 unsigned char* m = stageBuf + nBufPos;
@@ -952,7 +959,7 @@ void message_loop(int s, struct data* pb) {
                 if (nMsgLen > nBufLen)
                     break;
                 m[nMsgLen - 1] = '\0';
-#if defined(WINDOWS_CPP_BUILD)
+#ifdef _WIN32
                 Dispatch(s, pb, (char*)m);
 #else
                 Dispatch(s, pb, m);
@@ -1034,7 +1041,7 @@ int save_cfg(struct data* pb) {
     }
     fclose(cfg);
 
-    return 1; /* forgot to correct my c file */
+    return TRUE;
 }
 
 int read_config() {
@@ -1327,13 +1334,10 @@ int read_config() {
         pthread_t thread[numThreads];
         //Create and configure each bot.
         for (int t = 0; t < numBots; t++, pb++) {
-            char *replaced = replace_str(username, (char*)"#", t);
-            char locName[20] = { 0 };
-            memcpy(locName, replaced, strlen(replaced));
-	    //char* thisBotsName = strdup(replace_str(username, "#", t));
+            char* thisBotsName = strdup(replace_str(username, "#", t));
             //There's no need to do this more than once.
-            if (strcmp(pb->username, locName) != 0) {
-                strcpy(pb->username, locName);
+            if (strcmp(pb->username, thisBotsName) != 0) {
+                strcpy(pb->username, thisBotsName);
                 strcpy(pb->password, password);
                 strcpy(pb->channel, channel);
                 strcpy(pb->server, server);
