@@ -613,34 +613,40 @@ void OnChannel(int s, struct data* pb, char* szEventText) {
 } /* you dont need a return at the end of a void function [remove this note if you ever revisit it] */
 
 void OnInfo(int s, struct data *pb, char *szEventText) {
-    if(strstr(szEventText, "init 6"))
+    if (strstr(szEventText, BASE_INIT6)) {
         return;
-    else if(strstr(szEventText, "Topic:"))
+    }
+    else if (strstr(szEventText, BASE_SETTHETOPIC)) {
         return;
-    else if(strstr(szEventText, "set the topic"))
+    }
+    else if (strstr(szEventText, BASE_WASKICKED)) {
         return;
-    else if(strstr(szEventText, "was kicked out of the channel"))
+    }
+    else if (strstr(szEventText, BASE_WASBANNED)) {
         return;
-    else if(strstr(szEventText, "was banned by"))
+    }
+    else if (strstr(szEventText, BASE_WASUNBANNED)) {
         return;
-    else if(strstr(szEventText, "was unbanned by"))
+    }
+    else if (strstr(szEventText, BASE_NOCHATPRIV)) {
         return;
-    else if(strstr(szEventText, "This channel does not have chat privileges"))
+    }
+    else if (strstr(szEventText, BASE_CHATCHANNEL)) {
         return;
-    else if(strstr(szEventText, "This is a chat channel"))
+    }
+    else if (strstr(szEventText, BASE_CHANNELUSERS)) {
         return;
-    else if(strstr(szEventText, "users in channel"))
-        return;
-    else if(strstr(szEventText, "kicked you out of the channel"))
-        return;
-    else if(strstr(szEventText, "is your new designated heir")) {
+    }
+    else if(strstr(szEventText, BASE_NEWHEIR)) {
         pb->des=1;
         if(pb->op!=0 && pb->hasop!=0) {
             pb->op=0;
-            Send(s, "/resign\r\n");
+            Send(s, SERVER_COMMAND_0, SERVER_RESIGN);
             msleep(3000);
-        } return;
-    } else if (strstr(szEventText,"You placed")) {
+        }
+        return;
+    }
+    else if(strstr(szEventText, BASE_PLACED)) {
         char *tmp;
         char *pos;
         tmp=strtok_r(szEventText, " ", &pos);
@@ -648,29 +654,40 @@ void OnInfo(int s, struct data *pb, char *szEventText) {
         tmp=strtok_r(NULL, " ", &pos);
         pb->place=atoi(tmp);
         return;
-    } else if (strstr(szEventText,"Uptime")) {
+    }
+    else if(strstr(szEventText, BASE_CUPTIME)) {
         char *tmp;
         char *pos;
         tmp=strtok_r(szEventText, "\r\n", &pos);
-        Send(s, "%s\r\n", tmp);
+        Send(s, SERVER_BASE_SPEAK, tmp);
         msleep(3000);
         return;
-    } else {
+    }
+    else if(strstr(szEventText, BASE_YOUWEREKICKED)){
+        pb->chanham=1;
+        Send(s, SERVER_COMMAND_1, SERVER_JOIN, backup);
+        msleep(3000);
+        return;
+    } 
+    else {
         char *pos;
         char *user1;
         char *user2;
         user1 = strtok_r(szEventText, ", ", &pos);
         if(user1!=NULL) {
-            while ((*user1 == ' '))
+            while ((*user1 == ' ')) {
                 ++user1;
+            }
             OnJoin(s, pb, user1);
         }
         user2 = strtok_r(NULL, "\r\n", &pos);
         if(user2!=NULL) {
-            while ((*user2 == ' '))
+            while ((*user2 == ' ')) {
                 ++user2;
+            }
             OnJoin(s, pb, user2);
-        } return;
+        }
+        return; /* this return dosent need to be here but whatever lol */
     }
 }
 
@@ -782,16 +799,20 @@ void Dispatch(int s, struct data *pb, char *szEventText) {
         return;
     } return;
 }
-int Send(int s, char *lpszFmt, ...) {
+
+/*
+    local variable "int try" was getting caught as a (try/catch) block
+    wasent needed regardless just return the send().
+*/
+int Send(int s, const char* lpszFmt, ...) {
     char szOutStr[256];
-    int try;
     va_list argptr;
     va_start(argptr, lpszFmt);
-    vsprintf(szOutStr, lpszFmt, argptr);
+    vsprintf(szOutStr, lpszFmt, argptr); /* match the var (const char* lpszFmt) */
     va_end(argptr);
-    try = send(s, szOutStr, strlen(szOutStr), 0);
-    return try;
+    return send(s, szOutStr, strlen(szOutStr), 0);
 }
+
 void message_loop(int s, struct data *pb) {
     int n;
     int nBufLen=0;
@@ -1020,8 +1041,15 @@ int Connect(int s, struct timeval tv, struct data* pb) {
 	name.sin_port = htons(pb->port);
 	inet_pton(AF_INET, pb->server, &(name.sin_addr));
 	inet_pton(AF_INET, bindaddr, &(name2.sin_addr));
+	/*
+	     I need an explenation of what exactly this is doing on your system lol
+	*/
 	if (bind(s, (struct sockaddr *)&name2, sizeof(name2)) == -1)
 	    return -1;
+	/*
+	     instead of using set_nonblock(s) try using
+	     ioctl(s, FIONBIO, (u_long*)&on); this should be available to you
+	*/
 	set_nonblock(s);
 	FD_ZERO(&fdr); FD_SET(s,&fdr); fdw=fdr;
 	connect(s,(struct sockaddr *)&name,sizeof(name));
@@ -1032,6 +1060,7 @@ int Connect(int s, struct timeval tv, struct data* pb) {
 	    err= -1;
 	return err;
 }
+
 void *thread_conn(void *arg) {
     struct data* pb=(struct data *)arg;
 	struct timeval tv;
