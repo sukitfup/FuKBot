@@ -247,7 +247,7 @@ void OnInfo(int s, struct data *pb, char *szEventText);
 void OnError(int s, struct data *pb, char *szEventText);
 void OnPing(int s, struct data *pb, char *szEventText);
 void Dispatch(int s, struct data *pb, char *szEventText);
-int Send(int s, char *lpszFmt, ...);
+int Send(int s, const char *lpszFmt, ...); /* match vars */
 void message_loop(int s, struct data *pb);
 void msleep(unsigned long milisec);
 char *replace_str(char *str, char *orig, int rep);
