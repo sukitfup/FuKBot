@@ -1,9 +1,98 @@
 #include "fuk3.h"
-void set_nonblock(int fd) {
-    int old_option = fcntl(fd, F_GETFL);
-    int new_option = old_option | O_NONBLOCK;
-    fcntl(fd, F_SETFL, new_option);
-}
+
+#if defined(WINDOWS_CPP_BUILD)
+    char* mystrsep(char** stringp, const char* delim)
+    {
+        char* start = *stringp;
+        char* p;
+
+        p = (start != NULL) ? strpbrk(start, delim) : NULL;
+
+        if (p == NULL)
+        {
+            *stringp = NULL;
+        }
+        else
+        {
+            *p = '\0';
+            *stringp = p + 1;
+        }
+
+        return start;
+    }
+#endif
+
+#if defined(WINDOWS_CPP_BUILD)
+    void* ReAllocArray(void* ptr, size_t nmemb, size_t size) {
+        const size_t zerobase = 1;
+        size_t xsize = ((nmemb + zerobase) * size);
+        void* newpointer;
+        if ((newpointer = realloc(ptr, xsize)) == NULL) { /* i havent looked up realloc in some time but this should be the equiv */
+            free(ptr);
+            ptr = NULL;
+            size = 0;
+            return (NULL);
+        }
+        return newpointer;
+    }
+
+    int __cdecl getrusage(int who, struct rusage *r_usageval)
+    {
+        PROCESS_MEMORY_COUNTERS pmc;
+        FILETIME        starttime;
+        FILETIME        exittime;
+        FILETIME        KernelTime;
+        FILETIME        UserTime;
+        ULARGE_INTEGER  li;
+
+        if (!&r_usageval)
+        {
+            errno = EFAULT;
+            return -1;
+        }
+
+        if (who != RUSAGE_SELF)
+        {
+            errno = EINVAL;
+            return -1;
+        }
+
+        memset(r_usageval, 0, sizeof(struct rusage));
+        if (GetProcessTimes(GetCurrentProcess(),
+            &starttime, &exittime, &KernelTime, &UserTime) == 0)
+        {
+            return -1;
+        }
+
+        if (!GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc))) {
+            return -1;
+        }
+
+        /* Convert FILETIMEs (0.1 us) to struct timeval */
+        memcpy(&li, &KernelTime, sizeof(FILETIME));
+        li.QuadPart /= 10L;         /* Convert to microseconds */
+        r_usageval->ru_stime.tv_sec = li.QuadPart / 10000000L;
+        r_usageval->ru_stime.tv_usec = li.QuadPart % 10000000L;
+
+        memcpy(&li, &UserTime, sizeof(FILETIME));
+        li.QuadPart /= 10L;         /* Convert to microseconds */
+        r_usageval->ru_utime.tv_sec = li.QuadPart / 10000000L;
+        r_usageval->ru_utime.tv_usec = li.QuadPart % 10000000L;
+
+        r_usageval->ru_majflt = pmc.PageFaultCount;
+        r_usageval->ru_maxrss = pmc.PeakWorkingSetSize / 1024;
+
+        return 0;
+    }
+#endif
+
+#if !defined(WINDOWS_CPP_BUILD) /* windows build running ioctl equivilant */
+    void set_nonblock(int fd) {
+        int old_option = fcntl(fd, F_GETFL);
+        int new_option = old_option | O_NONBLOCK;
+        fcntl(fd, F_SETFL, new_option);
+    }
+#endif
 
 void cfgStuff(int s, struct data* pb, char* com, char* text) {
     int x;
@@ -780,7 +869,8 @@ void Dispatch(int s, struct data *pb, char *szEventText) {
         if(!strcasecmp(CHANNEL_CMD, "JOIN")) {
             CHANNEL_NAME = strtok_r(NULL, "\r\n", &pos);
             OnChannel(s, pb, CHANNEL_NAME);
-        } return;
+        }
+        return;
     } else if(!strcasecmp(eventType, "SERVER")) {
         SERVER_CMD = strtok_r(NULL, " ", &pos);
         if(!strcasecmp(SERVER_CMD, "INFO")) {
@@ -797,7 +887,8 @@ void Dispatch(int s, struct data *pb, char *szEventText) {
         PING = strtok_r(NULL, " ", &pos);
         OnPing(s, pb, PING);
         return;
-    } return;
+    } else
+        return;
 }
 
 /*
@@ -808,41 +899,50 @@ int Send(int s, const char* lpszFmt, ...) {
     char szOutStr[256];
     va_list argptr;
     va_start(argptr, lpszFmt);
-    vsprintf(szOutStr, lpszFmt, argptr); /* match the var (const char* lpszFmt) */
+    vsprintf(szOutStr, lpszFmt, argptr);
     va_end(argptr);
     return send(s, szOutStr, strlen(szOutStr), 0);
 }
 
-void message_loop(int s, struct data *pb) {
+/*
+    type casting, though this shouldent matter to C
+    so the changes made should still compile.
+*/
+void message_loop(int s, struct data* pb) {
     int n;
-    int nBufLen=0;
-    int nBufPos=0;
+    int nBufLen = 0;
+    int nBufPos = 0;
     char stageBuf[BUFFSIZE];
     struct timeval tv;
-    if (s == INVALID_SOCKET)
+    if (s == INVALID_SOCKET) {
         return;
-    for (;;) {
+    }
+    for (;;) { /* ... */
         fd_set fds;
         FD_ZERO(&fds);
         FD_SET(s, &fds);
         tv.tv_sec = 1;
         tv.tv_usec = 0;
-        n = select(s+1, &fds, 0, 0, &tv);
+        n = select(s + 1, &fds, 0, 0, &tv);
         if (n) {
-            int nNumToRead = BUFFSIZE-nBufLen-nBufPos;
+            int nNumToRead = BUFFSIZE - nBufLen - nBufPos;
             if (nNumToRead == 0) {
-                memmove(stageBuf, stageBuf+nBufPos, nBufLen);
+                memmove(stageBuf, stageBuf + nBufPos, nBufLen);
                 nBufPos = 0;
-                nNumToRead = BUFFSIZE-nBufLen;
+                nNumToRead = BUFFSIZE - nBufLen;
             }
-            n = recv(s, stageBuf+nBufPos+nBufLen, nNumToRead, 0);
+            n = recv(s, stageBuf + nBufPos + nBufLen, nNumToRead, 0);
             if (n <= 0) {
                 return;
             }
             nBufLen += n;
             while (nBufLen > 0) {
-                unsigned char *m = stageBuf+nBufPos;
-                int nMsgLen=0;
+#if defined(WINDOWS_CPP_BUILD)
+                unsigned char* m = (unsigned char*)stageBuf+nBufPos;
+#else
+                unsigned char* m = stageBuf + nBufPos;
+#endif
+                int nMsgLen = 0;
                 while (nMsgLen < nBufLen) {
                     if (m[nMsgLen] == '\n')
                         break;
@@ -851,8 +951,12 @@ void message_loop(int s, struct data *pb) {
                 nMsgLen++;
                 if (nMsgLen > nBufLen)
                     break;
-                m[nMsgLen-1] = '\0';
+                m[nMsgLen - 1] = '\0';
+#if defined(WINDOWS_CPP_BUILD)
+                Dispatch(s, pb, (char*)m);
+#else
                 Dispatch(s, pb, m);
+#endif
                 nBufLen -= nMsgLen;
                 nBufPos += nMsgLen;
             }
@@ -860,27 +964,32 @@ void message_loop(int s, struct data *pb) {
                 nBufPos = 0;
         }
         msleep(500);
-    } return;
-}
-void msleep(unsigned long milisec) {
-    struct timespec req={0};
-    time_t sec=(int)(milisec/1000);
-    milisec=milisec-(sec*1000);
-    req.tv_sec=sec;
-    req.tv_nsec=milisec*1000000L;
-    while(nanosleep(&req,&req)==-1)
-         continue;
+    }
     return;
 }
+
+#if !defined(WINDOWS_CPP_BUILD)
+    void msleep(unsigned long milisec) {
+        struct timespec req={0};
+        time_t sec=(int)(milisec/1000);
+        milisec=milisec-(sec*1000);
+        req.tv_sec=sec;
+        req.tv_nsec=milisec*1000000L;
+        while(nanosleep(&req,&req)==-1)
+             continue;
+        return;
+    }
+#endif
+
 char *replace_str(char *str, char *orig, int rep) {
-    static char buffer[20];
-    char *p;
-    if(!(p = strstr(str, orig)))
-        return str;
-    strncpy(buffer, str, p-str);
-    buffer[p-str] = '\0';
-    sprintf(buffer+(p-str), "%d%s", rep, p+strlen(orig));
-    return buffer;
+  static char buffer[20];
+  char *p;
+  if(!(p = strstr(str, orig)))
+    return str;
+  strncpy(buffer, str, p-str);
+  buffer[p-str] = '\0';
+  sprintf(buffer+(p-str), "%d%s", rep, p+strlen(orig));
+  return buffer;
 }
 
 int save_cfg(struct data* pb) {
@@ -925,7 +1034,7 @@ int save_cfg(struct data* pb) {
     }
     fclose(cfg);
 
-    return 1; //TRUE; /* github dosent like the C foundation boolean integer value what kinda shit is this */
+    return 1; /* forgot to correct my c file */
 }
 
 int read_config() {
@@ -947,30 +1056,30 @@ int read_config() {
             strtok(r, "\r\n");
             if (!memcmp(r, FUK_CFG_USERNAME, strlen(FUK_CFG_USERNAME))) {
                 memset(username, '\0', sizeof(username));
-                strcpy(username, strdup(r + strlen(FUK_CFG_USERNAME)));
+                strcpy(username, (r + strlen(FUK_CFG_USERNAME)));
             }
             else if (!memcmp(r, FUK_CFG_PASSWORD, strlen(FUK_CFG_PASSWORD))) {
                 memset(password, '\0', sizeof(password));
-                strcpy(password, strdup(r + strlen(FUK_CFG_PASSWORD)));
+                strcpy(password, (r + strlen(FUK_CFG_PASSWORD)));
             }
             else if (!memcmp(r, FUK_CFG_HOME, strlen(FUK_CFG_HOME))) {
                 memset(channel, '\0', sizeof(channel));
-                strcpy(channel, strdup(r + strlen(FUK_CFG_HOME)));
+                strcpy(channel, (r + strlen(FUK_CFG_HOME)));
             }
             else if (!memcmp(r, FUK_CFG_SERVER, strlen(FUK_CFG_SERVER))) {
                 memset(server, '\0', sizeof(server));
-                strcpy(server, strdup(r + strlen(FUK_CFG_SERVER)));
+                strcpy(server, (r + strlen(FUK_CFG_SERVER)));
             }
             else if (!memcmp(r, FUK_CFG_PORT, strlen(FUK_CFG_PORT))) {
                 port = atoi(r + strlen(FUK_CFG_PORT));
             }
             else if (!memcmp(r, FUK_CFG_BIND, strlen(FUK_CFG_BIND))) {
                 memset(bindaddr, '\0', sizeof(server));
-                strcpy(bindaddr, strdup(r + strlen(FUK_CFG_BIND)));
+                strcpy(bindaddr, (r + strlen(FUK_CFG_BIND)));
             }
             else if (!memcmp(r, FUK_CFG_TRIGGER, strlen(FUK_CFG_TRIGGER))) {
                 memset(trigger, '\0', sizeof(trigger));
-                strcpy(trigger, strdup(r + strlen(FUK_CFG_TRIGGER)));
+                strcpy(trigger, (r + strlen(FUK_CFG_TRIGGER)));
             }
             else if (!memcmp(r, FUK_CFG_THREADS, strlen(FUK_CFG_THREADS))) {
                 threads = atoi(r + strlen(FUK_CFG_THREADS));
@@ -983,11 +1092,11 @@ int read_config() {
             }
             else if (!memcmp(r, FUK_CFG_BACKUPCHAN, strlen(FUK_CFG_BACKUPCHAN))) {
                 memset(backup, '\0', sizeof(backup));
-                strcpy(backup, strdup(r + strlen(FUK_CFG_BACKUPCHAN)));
+                strcpy(backup, (r + strlen(FUK_CFG_BACKUPCHAN)));
             }
             else if (!memcmp(r, FUK_CFG_TOPIC, strlen(FUK_CFG_TOPIC))) {
                 memset(topic, '\0', sizeof(topic));
-                strcpy(topic, strdup(r + strlen(FUK_CFG_TOPIC)));
+                strcpy(topic, (r + strlen(FUK_CFG_TOPIC)));
             }
             else if (!memcmp(r, FUK_CFG_BANWAIT, strlen(FUK_CFG_BANWAIT))) {
                 banWait = atoi(r + strlen(FUK_CFG_BANWAIT));
@@ -1001,25 +1110,25 @@ int read_config() {
             else if (!memcmp(r, FUK_CFG_MASTER, strlen(FUK_CFG_MASTER))) {
                 master = (masterList*)reallocarray(master, ++masterSz, sizeof(masterList));
                 memset(master[i].id, '\0', sizeof(master[i].id));
-                strcpy(master[i].id, strdup(r + strlen(FUK_CFG_MASTER)));
+                strcpy(master[i].id, (r + strlen(FUK_CFG_MASTER)));
                 i++;
             }
             else if (!memcmp(r, FUK_CFG_SAFE, strlen(FUK_CFG_SAFE))) {
                 safe = (safeList*)reallocarray(safe, ++safeSz, sizeof(safeList));
                 memset(safe[j].id, '\0', sizeof(safe[j].id));
-                strcpy(safe[j].id, strdup(r + strlen(FUK_CFG_SAFE)));
+                strcpy(safe[j].id, (r + strlen(FUK_CFG_SAFE)));
                 j++;
             }
             else if (!memcmp(r, FUK_CFG_SHIT, strlen(FUK_CFG_SHIT))) {
                 shit = (shitList*)reallocarray(shit, ++shitSz, sizeof(shitList));
                 memset(shit[k].id, '\0', sizeof(shit[k].id));
-                strcpy(shit[k].id, strdup(r + strlen(FUK_CFG_SHIT)));
+                strcpy(shit[k].id, (r + strlen(FUK_CFG_SHIT)));
                 k++;
             }
             else if (!memcmp(r, FUK_CFG_DES, strlen(FUK_CFG_DES))) {
                 des = (desList*)reallocarray(des, ++desSz, sizeof(desList));
                 memset(des[d].id, '\0', sizeof(des[d].id));
-                strcpy(des[d].id, strdup(r + strlen(FUK_CFG_DES)));
+                strcpy(des[d].id, (r + strlen(FUK_CFG_DES)));
                 d++;
             }
         }
@@ -1028,125 +1137,293 @@ int read_config() {
     return 0;
 }
 
-int Connect(int s, struct timeval tv, struct data* pb) {
-	fd_set fdr, fdw;
-	int on=1, err=0, errlen=4;
-	int sockinlen=16;
-	struct sockaddr_in sockin;
-	struct sockaddr_in name2;
-	struct sockaddr_in name;
-	name2.sin_family = AF_INET;
-	name2.sin_port = INADDR_ANY;
-	name.sin_family = AF_INET;
-	name.sin_port = htons(pb->port);
-	inet_pton(AF_INET, pb->server, &(name.sin_addr));
-	inet_pton(AF_INET, bindaddr, &(name2.sin_addr));
-	/*
-	     I need an explenation of what exactly this is doing on your system lol
-	*/
-	if (bind(s, (struct sockaddr *)&name2, sizeof(name2)) == -1)
-	    return -1;
-	/*
-	     instead of using set_nonblock(s) try using
-	     ioctl(s, FIONBIO, (u_long*)&on); this should be available to you
-	*/
-	set_nonblock(s);
-	FD_ZERO(&fdr); FD_SET(s,&fdr); fdw=fdr;
-	connect(s,(struct sockaddr *)&name,sizeof(name));
-	select(s+1,&fdr,&fdw,NULL,(struct timeval *)&tv);
-	if (FD_ISSET(s,&fdw)) {
-		getsockopt(s,SOL_SOCKET,SO_ERROR,&err,&errlen);
-	} else
-	    err= -1;
-	return err;
-}
+#if defined(WINDOWS_CPP_BUILD)
+    int Connect(int s, struct timeval tv, struct data* pb) {
+	    fd_set fdr, fdw;
+	    int on=1, err=0, errlen=4;
+	    int sockinlen=16;
+	    struct sockaddr_in name;
 
-void *thread_conn(void *arg) {
-    struct data* pb=(struct data *)arg;
-	struct timeval tv;
-	int s, off = 0;
-	tv.tv_sec=0;
-	startTime = time (NULL);
-	if (delay > 0) {
-		pb->delay2 = rand() % scatter + delay;
-	}else {
-		pb->delay2 = delay;
-	}
-	tv.tv_usec = pb->delay2 * 1000;
-    while (__sync_bool_compare_and_swap(&pb->connected, 0, 0)) {
-		s=socket(AF_INET, SOCK_STREAM, 0);
-		int con = Connect(s, tv, pb);
-		if (con == 0)
-		    break;
-		else
-			close(s);
-	}
-    if (!__sync_bool_compare_and_swap(&pb->connected, 0, 1)) {
-        close(s);
-        pthread_exit(NULL);
-	}
-    Send(s, pb->logonPacket, sizeof(pb->logonPacket), 0);
-    pb->conTime = time(NULL) - startTime;
-    message_loop(s, pb);
-    close(s);
-    __sync_bool_compare_and_swap(&pb->connected, 1, 0);
-    pthread_exit(NULL);
-}
-void create_threads(struct data *pb) {
-    int err, numThreads;
-    int i = 0;
-    numThreads = numBots * threads;
-    pthread_t thread[numThreads];
-    for (int t = 0; t < numBots; t++, pb++) {
-        char *replaced = replace_str(username, (char*)"#", t); /* should not be static lol that may have been my bad there */
-        char locName[20] = { 0 };
-        memcpy(locName, replaced, strlen(replaced));
-	memset(pb->username, '\0', sizeof(pb->username));
-        strcpy(pb->username, locName);
-	memset(pb->password, '\0', sizeof(pb->password));
-        strcpy(pb->password, password);
-	memset(pb->channel, '\0', sizeof(pb->channel));
-        strcpy(pb->channel, channel);
-	memset(pb->server, '\0', sizeof(pb->server));
-        strcpy(pb->server, server);
-	memset(pb->trigger, '\0', sizeof(pb->trigger));
-        strcpy(pb->trigger, trigger);
-        pb->botNum = t;
-        pb->port = port;
-        pb->threads = threads;
-        memset(pb->logonPacket, '\0', sizeof(pb->logonPacket));
-        sprintf(pb->logonPacket, "C1\r\nACCT %s\r\nPASS %s\r\nHOME %s\r\nLOGIN\r\n", pb->username, pb->password, pb->channel);
-	    for (int z = 0; z < threads; z++, i++) {
-            err = pthread_create(&thread[i], NULL, thread_conn, pb);
-            if (err < 0)
-                perror("pthread_create");
+        /*
+            im assuming the bind is a posix connection only thing, regardless its not needed on windows to connect.
+        */
+
+	    name.sin_family = AF_INET;
+	    name.sin_port = htons(pb->port);
+	    inet_pton(AF_INET, pb->server, &(name.sin_addr));
+
+        ioctl(s, FIONBIO, (u_long*)&on);
+
+        FD_ZERO(&fdr); FD_SET(s,&fdr); fdw=fdr;
+	    connect(s,(struct sockaddr *)&name,sizeof(name));
+	    select(s+1,&fdr,&fdw,NULL,(struct timeval *)&tv);
+
+	    if (FD_ISSET(s,&fdw)) {
+		    getsockopt(s, SOL_SOCKET, SO_ERROR, (char*)&err, &errlen);
+	    }else {
+	        err= -1;
 	    }
+	    return err;
     }
-    for (int t = 0; t < numThreads; t++) {
-        err = pthread_join(thread[t], NULL);
-        if (err < 0)
-            perror("pthread_exit");
+#else
+    int Connect(int s, struct timeval tv, struct data* pb) {
+        fd_set fdr, fdw;
+        int on = 1, err = 0, errlen = 4;
+        int sockinlen = 16;
+        struct sockaddr_in sockin;
+        struct sockaddr_in name2;
+        struct sockaddr_in name;
+        name2.sin_family = AF_INET;
+        name2.sin_port = INADDR_ANY;
+        name.sin_family = AF_INET;
+        name.sin_port = htons(pb->port);
+        inet_pton(AF_INET, pb->server, &(name.sin_addr));
+        inet_pton(AF_INET, pb->bindaddr, &(name2.sin_addr));
+        if (bind(s, (struct sockaddr*)&name2, sizeof(name2)) == -1) {
+            return -1;
+        }
+        set_nonblock(s);
+        FD_ZERO(&fdr); FD_SET(s, &fdr); fdw = fdr;
+        connect(s, (struct sockaddr*)&name, sizeof(name));
+        //printf("%s Attempting to connect on socket %d\n", pb->username, s);
+        select(s + 1, &fdr, &fdw, NULL, (struct timeval*)&tv);
+        if (FD_ISSET(s, &fdw)) {
+            getsockopt(s, SOL_SOCKET, SO_ERROR, &err, &errlen);
+        }
+        else {
+            err = -1;
+        }
+        return err;
     }
-    msleep(conWait * 1000);
-}
-int main() {
-    printf("FuKeRy | v3.0\n");
-    printf("PID: %d\n",getpid() + 1);
-    if ((main_pid = fork())==-1) {
-        printf("shutting down: unable to fork\n");
-        exit(1);
+#endif
+
+#if defined(WINDOWS_CPP_BUILD)
+    void *thread_conn(void *arg) {
+        struct data* pb=(struct data *)arg;
+	    struct timeval tv;
+	    int s = 0, off = 0;
+	    tv.tv_sec=0;
+	    startTime = time (NULL);
+	    if (delay > 0) {
+		    pb->delay2 = rand() % scatter + delay;
+	    }else {
+		    pb->delay2 = delay;
+	    }
+	    tv.tv_usec = pb->delay2 * 1000;
+
+        //Recon Loop
+        while (pb->connected == 0) {
+		    s=socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		    int con = Connect(s, tv, pb);
+		    if (con == 0)
+		        break;
+		    else
+			    close(s);
+	    }
+
+        //Not first so close socket and kill thread. /* these __sync_bool_compare_and_swap are fuckin with my eyeballs */
+        if (pb->connected == 1) {
+            //printf("%s Not first :( Closing socket %d\n", pb->username, s);
+            close(s);
+            return (NULL);
+	    }
+        pb->connected = 1;
+        //First thread to connect. Do stuff.
+        Send(s, pb->logonPacket, sizeof(pb->logonPacket), 0);
+        pb->conTime = time(NULL) - startTime;
+        //printf("%s first to connect! On socket %d\n", pb->username, s);
+        message_loop(s, pb);
+        //Disconnected. Wrap it up.
+        //printf("Disconnected... Closing socket %d\n", s);
+        close(s);
+    
+        pb->connected = 0;
     }
-    if(main_pid!=0)
-        return 0;
-    int try_read = read_config();
-    if (try_read != 0) {
-        perror("Read config error.");
-        exit(0);
+#else
+    void* thread_conn(void* arg) {
+        struct data* pb = (struct data*)arg;
+        struct timeval tv;
+        int s, off = 0;
+        tv.tv_sec = 0;
+        startTime = time(NULL);
+        if (delay > 0) {
+            pb->delay2 = rand() % scatter + delay;
+        }
+        else {
+            pb->delay2 = delay;
+        }
+        tv.tv_usec = pb->delay2 * 1000;
+        //Recon Loop
+        while (__sync_bool_compare_and_swap(&pb->connected, 0, 0)) {
+            s = socket(AF_INET, SOCK_STREAM, 0);
+            int con = Connect(s, tv, pb);
+            if (con == 0)
+                break;
+            else
+                close(s);
+        }
+        //Not first so close socket and kill thread.
+        if (!__sync_bool_compare_and_swap(&pb->connected, 0, 1)) {
+            //printf("%s Not first :( Closing socket %d\n", pb->username, s);
+            close(s);
+            pthread_exit(NULL);
+        }
+        //First thread to connect. Do stuff.
+        Send(s, pb->logonPacket, sizeof(pb->logonPacket), 0);
+        pb->conTime = time(NULL) - startTime;
+        //printf("%s first to connect! On socket %d\n", pb->username, s);
+        message_loop(s, pb);
+        //Disconnected. Wrap it up.
+        //printf("Disconnected... Closing socket %d\n", s);
+        close(s);
+        __sync_bool_compare_and_swap(&pb->connected, 1, 0);
+        pthread_exit(NULL);
     }
-    pb = (struct data *)calloc(numBots, sizeof(struct data));
-    while (1) {
-        startTime = time (NULL);
-        create_threads(pb);
+#endif
+
+#if defined(WINDOWS_CPP_BUILD)
+    void create_threads(struct data *pb) {
+        int i = 0;
+
+        //pthread_t thread[8]; //numThreads
+        int numThreads = numBots * threads;
+        std::vector<std::thread> thread(numThreads);
+
+        //Create and configure each bot.
+        for (int t = 0; t < numBots; t++, pb++) {
+            char *replaced = replace_str(username, (char*)"#", t);
+            char locName[20] = { 0 };
+            memcpy(locName, replaced, strlen(replaced));
+            //char *thisBotsName = strdup(replace_str(username, (char*)"#", t));
+            //There's no need to do this more than once.
+            if (strcmp(pb->username, locName) != 0) {
+                strcpy(pb->username, locName);
+                strcpy(pb->password, password);
+                strcpy(pb->channel, channel);
+                strcpy(pb->server, server);
+                strcpy(pb->trigger, trigger);
+            }
+            pb->botNum = t;
+            pb->port = port;
+            pb->threads = threads;
+            memset(pb->logonPacket, '\0', sizeof(pb->logonPacket));
+            sprintf(pb->logonPacket, "C1\r\nACCT %s\r\nPASS %s\r\nHOME %s\r\nLOGIN\r\n", pb->username, pb->password, pb->channel);
+            //Create threads for each bot.
+	        for (int z = 0; z < threads; z++, i++) {
+                thread[i] = std::thread(thread_conn, pb);
+	        }
+        }
+        //Join threads if they haven't already kilt themselves.
+        for (int t = 0; t < numThreads; t++) {
+            thread[t].join();
+        }
+        msleep(conWait * 1000);
     }
-    free(pb);
-}
+#else
+    void create_threads(struct data* pb) {
+        int err;
+        int i = 0;
+        int numThreads = numBots * threads;
+        pthread_t thread[numThreads];
+        //Create and configure each bot.
+        for (int t = 0; t < numBots; t++, pb++) {
+            char *replaced = replace_str(username, (char*)"#", t);
+            char locName[20] = { 0 };
+            memcpy(locName, replaced, strlen(replaced));
+	    //char* thisBotsName = strdup(replace_str(username, "#", t));
+            //There's no need to do this more than once.
+            if (strcmp(pb->username, locName) != 0) {
+                strcpy(pb->username, locName);
+                strcpy(pb->password, password);
+                strcpy(pb->channel, channel);
+                strcpy(pb->server, server);
+                strcpy(pb->trigger, trigger);
+            }
+            pb->botNum = t;
+            pb->port = port;
+            pb->threads = threads;
+            memset(pb->logonPacket, '\0', sizeof(pb->logonPacket));
+            sprintf(pb->logonPacket, "C1\r\nACCT %s\r\nPASS %s\r\nHOME %s\r\nLOGIN\r\n", pb->username, pb->password, pb->channel);
+            //Create threads for each bot.
+            for (int z = 0; z < threads; z++, i++) {
+                err = pthread_create(&thread[i], NULL, thread_conn, pb);
+                if (err < 0)
+                    perror("pthread_create");
+            }
+        }
+        //Join threads if they haven't already kilt themselves.
+        for (int t = 0; t < numThreads; t++) {
+            err = pthread_join(thread[t], NULL);
+            if (err < 0)
+                perror("pthread_exit");
+        }
+        msleep(conWait * 1000);
+    }
+#endif
+
+#if defined(WINDOWS_CPP_BUILD)
+    /*
+        we cant use pthread directly in windows nor can we use fork()
+        so we need to rely on the thread work.
+        also windows requires wsa to be initialized and destroyed to use sockets
+    */
+    int main() {
+        srand(time(NULL)); /* must initialize srand */
+        int mainresult = 0;
+        WSADATA mainSdata;
+        int err = WSAStartup(2.2, &mainSdata);
+
+        printf("%s\n", FUK_VERSION);
+        printf("PID: %d\n", getpid() + 1);
+
+        if (err == 0) {
+            int try_read = read_config();
+            if (try_read != 0) {
+                printf("Read config error: %i\n", try_read);
+                mainresult = 2;
+            } else {
+                pb = (struct data*)calloc(numBots, sizeof(struct data));
+
+                //Launching numBots threads.
+                while (1) { /* this right here already worrys me lol */
+                    startTime = time(NULL);
+                    create_threads(pb);
+                }
+                free(pb);
+            }
+            /* WSA had a clean start and is initalized clean it all up now */
+            WSACleanup();
+        } else {
+            printf("WSAStartup failed with error: %d\n", err);
+            mainresult = 1;
+        }
+
+        return mainresult; /* 0 = ran normaly, 1 = wsa error, 2 = failed read cfg */
+    }
+#else
+    int main() {
+        srand(time(NULL)); /* must initialize srand */
+        printf("%s\n", FUK_VERSION);
+        printf("PID: %d\n", getpid() + 1);
+        if ((main_pid = fork()) == -1) {
+            printf("shutting down: unable to fork\n");
+            exit(1);
+            return 1; /* if fork failed shouldent need to exit() though i could be wrong lol */
+        }
+        if (main_pid != 0) {
+            return 0;
+        }
+        if (read_config() != 0) {
+            perror("Read config error.");
+            exit(0);
+            return 0; 
+        }
+        pb = (struct data*)calloc(numBots, sizeof(struct data));
+        while (1) {
+            startTime = time(NULL);
+            create_threads(pb);
+        }
+        free(pb);
+        return 0; /* need to return an integer lol */
+    }
+#endif
