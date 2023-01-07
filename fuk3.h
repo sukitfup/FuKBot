@@ -92,6 +92,19 @@
 	/*
 		basic text
 	*/
+	#define BASE_INIT6				"init 6"
+	#define BASE_SETTHETOPIC			"set the topic"
+	#define BASE_WASKICKED				"was kicked out of the channel"
+	#define BASE_WASBANNED				"was banned by"
+	#define BASE_WASUNBANNED			"was unbanned by"
+	#define BASE_NOCHATPRIV				"This channel does not have chat privileges"
+	#define BASE_CHATCHANNEL			"This is a chat channel"
+	#define BASE_CHANNELUSERS			"users in channel"
+	#define BASE_NEWHEIR				"is your new designated heir"
+	#define BASE_PLACED				"You placed"
+	#define BASE_CUPTIME				"Uptime"
+	#define BASE_YOUWEREKICKED			"kicked you out of the channel"
+
 	#define BASE_CHANRESTRICTED_TEXT	"That channel is restricted"
 	#define BASE_INVALIDUSER_TEXT		"Invalid user"
 	#define BASE_USERNOTLOGGEDON_TEXT	"That user is not logged on"
