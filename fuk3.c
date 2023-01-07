@@ -1,4 +1,5 @@
 #include "fuk3.h"
+
 void set_nonblock(int fd) {
     int old_option = fcntl(fd, F_GETFL);
     int new_option = old_option | O_NONBLOCK;
@@ -862,6 +863,7 @@ void message_loop(int s, struct data *pb) {
         msleep(500);
     } return;
 }
+
 void msleep(unsigned long milisec) {
     struct timespec req={0};
     time_t sec=(int)(milisec/1000);
@@ -872,6 +874,7 @@ void msleep(unsigned long milisec) {
          continue;
     return;
 }
+
 char *replace_str(char *str, char *orig, int rep) {
     static char buffer[20];
     char *p;
@@ -1092,6 +1095,7 @@ void *thread_conn(void *arg) {
     __sync_bool_compare_and_swap(&pb->connected, 1, 0);
     pthread_exit(NULL);
 }
+
 void create_threads(struct data *pb) {
     int err, numThreads;
     int i = 0;
