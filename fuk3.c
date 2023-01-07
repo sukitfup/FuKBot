@@ -799,16 +799,20 @@ void Dispatch(int s, struct data *pb, char *szEventText) {
         return;
     } return;
 }
-int Send(int s, char *lpszFmt, ...) {
+
+/*
+    local variable "int try" was getting caught as a (try/catch) block
+    wasent needed regardless just return the send().
+*/
+int Send(int s, const char* lpszFmt, ...) {
     char szOutStr[256];
-    int try;
     va_list argptr;
     va_start(argptr, lpszFmt);
-    vsprintf(szOutStr, lpszFmt, argptr);
+    vsprintf(szOutStr, lpszFmt, argptr); /* match the var (const char* lpszFmt) */
     va_end(argptr);
-    try = send(s, szOutStr, strlen(szOutStr), 0);
-    return try;
+    return send(s, szOutStr, strlen(szOutStr), 0);
 }
+
 void message_loop(int s, struct data *pb) {
     int n;
     int nBufLen=0;
