@@ -1,4 +1,4 @@
-//#define WINDOWS_CPP_BUILD /* Windows CPP Compile Option */
+//#define WINDOWS_CPP_BUILD /* Windows CPP Compile Option (un-comment out this line if your building from windows) */
 
 #if defined(WINDOWS_CPP_BUILD)
 	#define _CRT_SECURE_NO_WARNINGS
