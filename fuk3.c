@@ -937,7 +937,7 @@ void message_loop(int s, struct data* pb) {
             }
             nBufLen += n;
             while (nBufLen > 0) {
-#ifdef _WIN32
+#if defined(WINDOWS_CPP_BUILD)
                 unsigned char* m = (unsigned char*)stageBuf+nBufPos;
 #else
                 unsigned char* m = stageBuf + nBufPos;
@@ -952,7 +952,7 @@ void message_loop(int s, struct data* pb) {
                 if (nMsgLen > nBufLen)
                     break;
                 m[nMsgLen - 1] = '\0';
-#ifdef _WIN32
+#if defined(WINDOWS_CPP_BUILD)
                 Dispatch(s, pb, (char*)m);
 #else
                 Dispatch(s, pb, m);
@@ -1034,7 +1034,7 @@ int save_cfg(struct data* pb) {
     }
     fclose(cfg);
 
-    return TRUE;
+    return 1; /* forgot to correct my c file */
 }
 
 int read_config() {
