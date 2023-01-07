@@ -1334,10 +1334,13 @@ int read_config() {
         pthread_t thread[numThreads];
         //Create and configure each bot.
         for (int t = 0; t < numBots; t++, pb++) {
-            char* thisBotsName = strdup(replace_str(username, "#", t));
+            char *replaced = replace_str(username, (char*)"#", t);
+            char locName[20] = { 0 };
+            memcpy(locName, replaced, strlen(replaced));
+            //char *thisBotsName = strdup(replace_str(username, (char*)"#", t));
             //There's no need to do this more than once.
-            if (strcmp(pb->username, thisBotsName) != 0) {
-                strcpy(pb->username, thisBotsName);
+            if (strcmp(pb->username, locName) != 0) {
+                strcpy(pb->username, locName);
                 strcpy(pb->password, password);
                 strcpy(pb->channel, channel);
                 strcpy(pb->server, server);
