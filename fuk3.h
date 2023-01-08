@@ -1,6 +1,18 @@
-//#define WINDOWS_CPP_BUILD /* Windows CPP Compile Option (un-comment out this line if your building from windows) */
-//#define WINDOWS_CPP_32BIT /* 32 and 64 bit distinctions, only used in the version text currently */
-//#define WINDOWS_CPP_64BIT /* they also co-exist with WINDOWS_CPP_BUILD so yea */
+/*
+	Windows only section
+*/
+#if defined( _WIN32 )
+
+	#define WINDOWS_CPP_BUILD
+
+	#if defined( _WIN64 )
+		#define WINDOWS_CPP_64BIT
+	#elif defined( _WIN32 )
+		#define WINDOWS_CPP_32BIT
+	#endif
+
+#endif
+
 
 #if defined(WINDOWS_CPP_BUILD)
 	#define _CRT_SECURE_NO_WARNINGS
