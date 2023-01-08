@@ -114,15 +114,16 @@
 	#include <fcntl.h>	/* using ioctl in the windows build */
 #endif
 
+#define BUILD_DATE	" (Built " __DATE__ " " __TIME__ ") "
 /*
 	Set your version text here
 */
 #define VERSION_TEXT "FuKeRy | v3.0"
 
 #if defined(WINDOWS_CPP_BUILD)
-	#define FUK_VERSION (VERSION_TEXT WIN_BUILD)
+	#define FUK_VERSION (VERSION_TEXT WIN_BUILD BUILD_DATE)
 #else
-	#define FUK_VERSION (VERSION_TEXT)
+	#define FUK_VERSION (VERSION_TEXT BUILD_DATE)
 #endif
 
 #pragma region "CFG_STUFF Defines"
