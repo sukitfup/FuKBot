@@ -1186,7 +1186,7 @@ int read_config() {
         name.sin_port = htons(pb->port);
         inet_pton(AF_INET, pb->server, &(name.sin_addr));
         inet_pton(AF_INET, bindaddr, &(name2.sin_addr));
-        if (bind(s, (PSOCKADDR)&name2, sizeof(name2)) == INVALID_SOCKET) {
+        if (bind(s, (const struct sockaddr*)&name2, sizeof(name2)) == INVALID_SOCKET) {
             return INVALID_SOCKET;
         }
         set_nonblock(s);
