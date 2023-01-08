@@ -5,14 +5,22 @@
 
 	#define WINDOWS_CPP_BUILD
 
+	#define BASE_WIN	"Win"
 	#if defined( _WIN64 )
+		#define BASE_WINTEXT	BASE_WIN "64"
 		#define WINDOWS_CPP_64BIT
 	#elif defined( _WIN32 )
+		#define BASE_WINTEXT	BASE_WIN "32"
 		#define WINDOWS_CPP_32BIT
 	#endif
 
-#endif
+	#if defined( _DEBUG )
+		#define WIN_BUILD	" (" BASE_WINTEXT " debug) "
+	#else
+		#define WIN_BUILD	" (" BASE_WINTEXT ") "
+	#endif
 
+#endif
 
 #if defined(WINDOWS_CPP_BUILD)
 	#define _CRT_SECURE_NO_WARNINGS
@@ -106,22 +114,17 @@
 	#include <fcntl.h>	/* using ioctl in the windows build */
 #endif
 
+#define BUILD_DATE	" (Built " __DATE__ " " __TIME__ ") "
 /*
 	Set your version text here
 */
 #define VERSION_TEXT "FuKeRy | v3.0"
 
 #if defined(WINDOWS_CPP_BUILD)
-	#if defined(WINDOWS_CPP_32BIT)
-		#define FUK_VERSION (VERSION_TEXT " (Win32)")
-	#endif
-	#if defined(WINDOWS_CPP_64BIT)
-		#define FUK_VERSION (VERSION_TEXT " (Win64)")
-	#endif
+	#define FUK_VERSION (VERSION_TEXT WIN_BUILD BUILD_DATE)
 #else
-	#define FUK_VERSION (VERSION_TEXT)
+	#define FUK_VERSION (VERSION_TEXT BUILD_DATE)
 #endif
-
 
 #pragma region "CFG_STUFF Defines"
 	#define CFGSTUFF_LIST       "list"
@@ -348,7 +351,7 @@ struct data *pb;
 
 #if !defined(WINDOWS_CPP_BUILD)
 	void set_nonblock(int fd);
-	void set_block(int fd);
+	void set_block(int fd); /* this function dosent actually exist */
 #endif
 void cfgStuff(int s, struct data* pb, char* com, char* text);
 void OnJoin(int s, struct data* pb, char* szSpeaker);
@@ -371,3 +374,4 @@ int Connect(int s, struct timeval tv, struct data* pb);
 void* thread_conn(void* arg);
 int thread_conf(struct data* pb);	/* this function dosent actually exist */
 void create_threads(struct data* pb);
+
