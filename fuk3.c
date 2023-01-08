@@ -1156,7 +1156,7 @@ int read_config() {
 	    name.sin_port = htons(pb->port);
 	    inet_pton(AF_INET, pb->server, &(name.sin_addr));
 
-        inet_pton(AF_INET, pb->bindaddr, &(name2.sin_addr));
+        inet_pton(AF_INET, bindaddr, &(name2.sin_addr)); //pb->bindaddr
         if (bind(s, (PSOCKADDR)&name2, sizeof(name2)) == SOCKET_ERROR) {
             return SOCKET_ERROR;
         }
@@ -1185,7 +1185,7 @@ int read_config() {
         name.sin_family = AF_INET;
         name.sin_port = htons(pb->port);
         inet_pton(AF_INET, pb->server, &(name.sin_addr));
-        inet_pton(AF_INET, pb->bindaddr, &(name2.sin_addr));
+        inet_pton(AF_INET, bindaddr, &(name2.sin_addr));
         if (bind(s, (PSOCKADDR)&name2, sizeof(name2)) == SOCKET_ERROR) {
             return SOCKET_ERROR;
         }
