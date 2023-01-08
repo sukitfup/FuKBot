@@ -1149,15 +1149,17 @@ int read_config() {
 	    fd_set fdr, fdw;
 	    int on=1, err=0, errlen=4;
 	    int sockinlen=16;
-	    struct sockaddr_in name;
+        struct sockaddr_in name;
+        struct sockaddr_in name2 = { AF_INET, 0, INADDR_ANY };
 
-        /*
-            im assuming the bind is a posix connection only thing, regardless its not needed on windows to connect.
-        */
-
-	    name.sin_family = AF_INET;
+        name.sin_family = AF_INET;
 	    name.sin_port = htons(pb->port);
 	    inet_pton(AF_INET, pb->server, &(name.sin_addr));
+
+        inet_pton(AF_INET, pb->bindaddr, &(name2.sin_addr));
+        if (bind(s, (PSOCKADDR)&name2, sizeof(name2)) == SOCKET_ERROR) {
+            return SOCKET_ERROR;
+        }
 
         ioctl(s, FIONBIO, (u_long*)&on);
 
@@ -1178,16 +1180,14 @@ int read_config() {
         int on = 1, err = 0, errlen = 4;
         int sockinlen = 16;
         struct sockaddr_in sockin;
-        struct sockaddr_in name2;
+        struct sockaddr_in name2 = { AF_INET, 0, INADDR_ANY };
         struct sockaddr_in name;
-        name2.sin_family = AF_INET;
-        name2.sin_port = INADDR_ANY;
         name.sin_family = AF_INET;
         name.sin_port = htons(pb->port);
         inet_pton(AF_INET, pb->server, &(name.sin_addr));
         inet_pton(AF_INET, pb->bindaddr, &(name2.sin_addr));
-        if (bind(s, (struct sockaddr*)&name2, sizeof(name2)) == -1) {
-            return -1;
+        if (bind(s, (PSOCKADDR)&name2, sizeof(name2)) == SOCKET_ERROR) {
+            return SOCKET_ERROR;
         }
         set_nonblock(s);
         FD_ZERO(&fdr); FD_SET(s, &fdr); fdw = fdr;
