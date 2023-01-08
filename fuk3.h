@@ -15,9 +15,9 @@
 	#endif
 
 	#if defined( _DEBUG )
-		#define WIN_BUILD	" (" BASE_WINTEXT " debug) "
+		#define WIN_BUILD	" (" BASE_WINTEXT " debug)"
 	#else
-		#define WIN_BUILD	" (" BASE_WINTEXT ") "
+		#define WIN_BUILD	" (" BASE_WINTEXT ")"
 	#endif
 
 #endif
@@ -114,7 +114,7 @@
 	#include <fcntl.h>	/* using ioctl in the windows build */
 #endif
 
-#define BUILD_DATE	" (Built " __DATE__ " " __TIME__ ") "
+#define BUILD_DATE	" (Built " __DATE__ " " __TIME__ ")"
 /*
 	Set your version text here
 */
@@ -374,4 +374,3 @@ int Connect(int s, struct timeval tv, struct data* pb);
 void* thread_conn(void* arg);
 int thread_conf(struct data* pb);	/* this function dosent actually exist */
 void create_threads(struct data* pb);
-
