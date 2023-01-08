@@ -5,14 +5,22 @@
 
 	#define WINDOWS_CPP_BUILD
 
+	#define BASE_WIN	"Win"
 	#if defined( _WIN64 )
+		#define BASE_WINTEXT	BASE_WIN "64"
 		#define WINDOWS_CPP_64BIT
 	#elif defined( _WIN32 )
+		#define BASE_WINTEXT	BASE_WIN "32"
 		#define WINDOWS_CPP_32BIT
 	#endif
 
-#endif
+	#if defined( _DEBUG )
+		#define WIN_BUILD	" (" BASE_WINTEXT " debug) "
+	#else
+		#define WIN_BUILD	" (" BASE_WINTEXT ") "
+	#endif
 
+#endif
 
 #if defined(WINDOWS_CPP_BUILD)
 	#define _CRT_SECURE_NO_WARNINGS
@@ -112,16 +120,10 @@
 #define VERSION_TEXT "FuKeRy | v3.0"
 
 #if defined(WINDOWS_CPP_BUILD)
-	#if defined(WINDOWS_CPP_32BIT)
-		#define FUK_VERSION (VERSION_TEXT " (Win32)")
-	#endif
-	#if defined(WINDOWS_CPP_64BIT)
-		#define FUK_VERSION (VERSION_TEXT " (Win64)")
-	#endif
+	#define FUK_VERSION (VERSION_TEXT WIN_BUILD)
 #else
 	#define FUK_VERSION (VERSION_TEXT)
 #endif
-
 
 #pragma region "CFG_STUFF Defines"
 	#define CFGSTUFF_LIST       "list"
