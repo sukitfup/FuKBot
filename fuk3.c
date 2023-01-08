@@ -1041,7 +1041,7 @@ int save_cfg(struct data* pb) {
     }
     fclose(cfg);
 
-    return TRUE;
+    return 1; /* apparently i havent fixed this yet */
 }
 
 int read_config() {
