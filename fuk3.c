@@ -793,14 +793,10 @@ void OnError(int s, struct data *pb, char *szEventText) {
     }
     if (strstr(szEventText, BASE_INVALIDUSER_TEXT)){
         pb->des=0;
-        Send(s, SERVER_BASE_SPEAK, BASE_INVALIDUSER_TEXT);
-        msleep(3000);
         return;
     }
     if (strstr(szEventText, BASE_USERNOTLOGGEDON_TEXT)) {
         pb->des=0;
-        Send(s, SERVER_BASE_SPEAK, BASE_USERNOTLOGGEDON_TEXT);
-        msleep(3000);
         return;
     }
 }
