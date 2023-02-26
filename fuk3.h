@@ -349,7 +349,6 @@ struct data *pb;
 
 #if !defined(WINDOWS_CPP_BUILD)
 	void set_nonblock(int fd);
-	void set_block(int fd); /* this function dosent actually exist */
 #endif
 void cfgStuff(int s, struct data* pb, char* com, char* text);
 void OnJoin(int s, struct data* pb, char* szSpeaker);
@@ -370,5 +369,4 @@ int save_cfg(struct data* pb);
 int read_config();
 int Connect(int s, struct timeval tv, struct data* pb);
 void* thread_conn(void* arg);
-int thread_conf(struct data* pb);	/* this function dosent actually exist */
 void create_threads(struct data* pb);
