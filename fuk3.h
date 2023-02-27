@@ -214,6 +214,8 @@
 	#define BASE_YOUWEREKICKED			"kicked you out of the channel"
 
 	#define BASE_CHANRESTRICTED_TEXT	"That channel is restricted"
+	#define BASE_INVALIDUSER_TEXT		"Invalid user"
+	#define BASE_USERNOTLOGGEDON_TEXT	"That user is not logged on"
 
 #pragma endregion
 
