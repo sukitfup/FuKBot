@@ -1207,7 +1207,7 @@ int read_config() {
 	    int s = 0, off = 0;
 	    tv.tv_sec=0;
 	    startTime = time (NULL);
-	    if (delay > 0) {
+	    if (scatter > 0) {
 		    pb->delay2 = rand() % scatter + delay;
 	    }else {
 		    pb->delay2 = delay;
@@ -1249,7 +1249,7 @@ int read_config() {
         int s, off = 0;
         tv.tv_sec = 0;
         startTime = time(NULL);
-        if (delay > 0) {
+        if (scatter > 0) {
             pb->delay2 = rand() % scatter + delay;
         }
         else {
