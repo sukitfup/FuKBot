@@ -1374,7 +1374,7 @@ int read_config() {
         srand(time(NULL)); /* must initialize srand */
         int mainresult = 0;
         WSADATA mainSdata;
-        int err = WSAStartup(2.2, &mainSdata);
+        int err = WSAStartup(WINSOCK_VERSION, &mainSdata);
 
         printf("%s\n", FUK_VERSION);
         printf("PID: %d\n", getpid() + 1);
