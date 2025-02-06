@@ -1,33 +1,50 @@
-name: Build C++ EXE
+name: CMake Build for Windows & Linux
 
 on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        build_type: [Release]
+        include:
+          - os: windows-latest
+            c_compiler: gcc
+            cpp_compiler: g++
+          - os: ubuntu-latest
+            c_compiler: gcc
+            cpp_compiler: g++
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-      - name: Debug: List Files
-        run: dir /s /b
-          
-      - name: Install MinGW
-        run: choco install mingw -y
+    - name: Install Dependencies (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        choco install mingw -y --force
+        choco install winpthreads -y
 
-      - name: Verify MinGW Installation
-        run: g++ --version  # Checks if g++ is installed
+    - name: Install Dependencies (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: sudo apt update && sudo apt install -y build-essential cmake
 
-      - name: Compile C++ Code
-        run: g++ -o fuk3.exe fuk3.cpp
-        working-directory: ${{ github.workspace }}  # Ensure correct path
+    - name: Configure CMake
+      run: >
+        cmake -B build
+        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
+        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
 
-      - name: Verify EXE File
-        run: dir fuk3.exe  # Ensure EXE exists
+    - name: Build
+      run: cmake --build build --config ${{ matrix.build_type }}
 
-      - name: Upload EXE
-        uses: actions/upload-artifact@v4
-        with:
-          name: compiled-exe
-          path: fuk3.exe
+    - name: Upload Executable
+      uses: actions/upload-artifact@v4
+      with:
+        name: compiled-binaries
+        path: build/**/*.exe
