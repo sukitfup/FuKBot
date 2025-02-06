@@ -1,0 +1,26 @@
+name: CMake with Unix Makefiles
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Setup CMake
+      uses: lukka/get-cmake@v3
+
+    - name: Configure CMake
+      run: cmake -G "Unix Makefiles" -B build -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=Release
+
+    - name: Build
+      run: cmake --build build --config Release
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: FuKBot-executable
+        path: build/bin/FuKBot
