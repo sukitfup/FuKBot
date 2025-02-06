@@ -1,0 +1,23 @@
+name: Build EXE
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install MinGW
+        run: choco install mingw
+
+      - name: Compile C++ Code
+        run: g++ -o app.exe main.cpp  # Change 'main.cpp' to your file
+
+      - name: Upload EXE
+        uses: actions/upload-artifact@v3
+        with:
+          name: compiled-exe
+          path: fuk3.exe
