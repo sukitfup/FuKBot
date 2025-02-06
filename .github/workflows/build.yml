@@ -35,7 +35,7 @@ jobs:
 
     - name: Configure CMake
       run: >
-        cmake -B build
+        cmake -G "MinGW Makefiles" -B build
         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
         -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
