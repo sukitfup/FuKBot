@@ -17,7 +17,7 @@ jobs:
         run: g++ -o app.exe main.cpp  # Change 'main.cpp' to your file
 
       - name: Upload EXE
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: compiled-exe
           path: fuk3.exe
