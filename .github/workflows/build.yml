@@ -1,4 +1,4 @@
-name: Build EXE
+name: Build C++ EXE
 
 on: [push, pull_request]
 
@@ -10,11 +10,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Debug: List Files
+        run: dir /s /b
+          
       - name: Install MinGW
-        run: choco install mingw
+        run: choco install mingw -y
+
+      - name: Verify MinGW Installation
+        run: g++ --version  # Checks if g++ is installed
 
       - name: Compile C++ Code
-        run: g++ -o app.exe main.cpp  # Change 'main.cpp' to your file
+        run: g++ -o fuk3.exe fuk3.cpp
+        working-directory: ${{ github.workspace }}  # Ensure correct path
+
+      - name: Verify EXE File
+        run: dir fuk3.exe  # Ensure EXE exists
 
       - name: Upload EXE
         uses: actions/upload-artifact@v4
