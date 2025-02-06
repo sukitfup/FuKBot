@@ -1,0 +1,38 @@
+name: CMake on Windows
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Setup Chocolatey
+      run: |
+        Set-ExecutionPolicy Bypass -Scope Process -Force; `
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; `
+        iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+
+    - name: Install Dependencies
+      run: |
+        choco install cmake --version=3.20.0
+        choco install gcc
+        # Manually install winpthreads if not available through Chocolatey
+        Invoke-WebRequest -Uri "https://sourceforge.net/projects/mingw-w64/files/latest/download" -OutFile "$env:TEMP\mingw-w64.exe"
+        Start-Process "$env:TEMP\mingw-w64.exe" -ArgumentList "/SILENT" -NoNewWindow -Wait
+
+    - name: Configure CMake
+      run: |
+        cmake -G "MinGW Makefiles" -B build -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=Release
+
+    - name: Build
+      run: cmake --build build --config Release
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: FuKBot-executable
+        path: build/bin/FuKBot.exe
