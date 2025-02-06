@@ -1,4 +1,9 @@
 #include "fuk3.h"
+#ifdef _WIN32
+  #include <windows.h>
+#else
+  #include <sched.h>
+#endif
 
 #if defined(WINDOWS_CPP_BUILD)
     char* mystrsep(char** stringp, const char* delim)
