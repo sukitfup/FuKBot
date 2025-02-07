@@ -101,7 +101,7 @@ void cfgStuff(int s, struct data* pb, char* com, char* text) {
     int replace = 0;
     #if defined(WINDOWS_CPP_BUILD)
     char* list = strtok_s(text, " ", &pos);
-    char* name = strtok_s(NULL, " ", &pos;
+    char* name = strtok_s(NULL, " ", &pos);
     #else
     char* list = strtok_r(text, " ", &pos);
     char* name = strtok_r(NULL, " ", &pos);
@@ -912,9 +912,9 @@ void Dispatch(int s, struct data *pb, char *szEventText) {
     char *SERVER_MSG;
     char *SERVER_CMD;
     char *PING;
-    eventType = strtok_r(szEventText, " ", &pos);
+    eventType = strtok_s(szEventText, " ", &pos);
     if(!strcasecmp(eventType, "USER")) {
-        USER_CMD = strtok_r(NULL, " ", &pos);
+        USER_CMD = strtok_s(NULL, " ", &pos);
         if(!strcasecmp(USER_CMD, "IN")) {
             USER_FLAGS = strtok_s(NULL, " ", &pos);
             USER_PING = strtok_s(NULL, " ", &pos);
@@ -939,7 +939,7 @@ void Dispatch(int s, struct data *pb, char *szEventText) {
             OnJoin(s, pb, USER_NAME);
             return;
         } else if(!strcasecmp(USER_CMD, "WHISPER")) {
-            USER_DIRECTION = strtok_r(NULL, " ", &pos);
+            USER_DIRECTION = strtok_s(NULL, " ", &pos);
             USER_NAME = strtok_s(NULL, " ", &pos);
             USER_MSG = strtok_s(NULL, "\r\n", &pos);
             OnTalk(s, pb, USER_NAME, USER_MSG);
