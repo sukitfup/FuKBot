@@ -943,7 +943,7 @@ void message_loop(int s, struct data* pb) {
 #ifdef _WIN32
                 unsigned char* m = (unsigned char*)stageBuf+nBufPos;
 #else
-                unsigned char* m = stageBuf + nBufPos;
+                unsigned char* m = reinterpret_cast<unsigned char*>(stageBuf + nBufPos);
 #endif
                 int nMsgLen = 0;
                 while (nMsgLen < nBufLen) {
