@@ -5,8 +5,13 @@ project(FuKBot)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+if(WIN32)
 # Add the executable
-add_executable(FuKBot fuk3.cpp)
+add_executable(FuKBoT fuk3.cpp)
+else()
+add_executable(FuKBoT fuk3.c)
+endif()
+
 
 # Specify output directories
 set_target_properties(FuKBot PROPERTIES
