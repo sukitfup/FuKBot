@@ -1,6 +1,7 @@
 #include "fuk3.h"
 #ifdef _WIN32
   #include <windows.h>
+  #include <thread>
 #else
   #include <sched.h>
 #endif
