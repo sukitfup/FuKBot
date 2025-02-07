@@ -31,6 +31,9 @@ jobs:
       run: |
         if (Test-Path -Path build) { Remove-Item -Recurse -Force build }
 
+    - name: Create build directory
+      run: New-Item -Path build -ItemType Directory -Force
+
     - name: Configure CMake
       run: cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=.\vcpkg\scripts\buildsystems\vcpkg.cmake
 
