@@ -958,7 +958,7 @@ void message_loop(int s, struct data* pb) {
 #ifdef _WIN32
                 Dispatch(s, pb, (char*)m);
 #else
-                Dispatch(s, pb, m);
+                Dispatch(s, pb, reinterpret_cast<char*>(m));
 #endif
                 nBufLen -= nMsgLen;
                 nBufPos += nMsgLen;
