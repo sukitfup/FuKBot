@@ -1141,10 +1141,10 @@ int read_config() {
 }
 
 #if defined(WINDOWS_CPP_BUILD)
-    int Connect(int s, struct timeval tv, struct data* pb) {
-	    fd_set fdr, fdw;
-	    int on=1, err=0, errlen=4;
-	    int sockinlen=16;
+	int Connect(int s, struct timeval tv, struct data* pb) {
+	fd_set fdr, fdw;
+	int on = 1, err = 0;
+	socklen_t errlen = sizeof(err);
         struct sockaddr_in name;
         struct sockaddr_in name2 = { AF_INET, 0, INADDR_ANY };
 
