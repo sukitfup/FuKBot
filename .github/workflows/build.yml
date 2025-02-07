@@ -23,11 +23,8 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Install Dependencies (Windows)
-      if: matrix.os == 'windows-latest'
-      run: |
-        choco install mingw -y --force
-        choco install winpthreads -y
+    - name: Install mingw-w64
+      run: choco install mingw-w64 --version=13.2.0 -y
 
     - name: Install Dependencies (Linux)
       if: matrix.os == 'ubuntu-latest'
