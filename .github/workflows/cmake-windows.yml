@@ -18,11 +18,11 @@ jobs:
 
     - name: Install MSYS2
       uses: msys2/setup-msys2@v2
-
-    - name: Add MSYS2 to PATH
-      run: echo "C:/msys64/usr/bin" >> $GITHUB_PATH
+      with:
+        update: true
 
     - name: Install GCC and CMake
+      shell: msys2 {0}
       run: |
         pacman -Sy --noconfirm
         pacman -S --noconfirm mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake
