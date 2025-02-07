@@ -4,44 +4,29 @@ on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-        build_type: [Release]
-        include:
-          - os: windows-latest
-            c_compiler: gcc
-            cpp_compiler: g++
-          - os: ubuntu-latest
-            c_compiler: gcc
-            cpp_compiler: g++
+    runs-on: windows-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Install Chocolatey
+      run: |
+        Set-ExecutionPolicy Bypass -Scope Process -Force; `
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; `
+        iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
 
     - name: Install mingw-w64
       run: choco install mingw-w64 --version=13.2.0 -y
 
-    - name: Install Dependencies (Linux)
-      if: matrix.os == 'ubuntu-latest'
-      run: sudo apt update && sudo apt install -y build-essential cmake
-
-    - name: Configure CMake
-      run: >
-        cmake -G "MinGW Makefiles" -B build
-        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
-        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
-        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+    - name: Setup CMake
+      uses: lukka/get-cmake@v3.20.0
 
     - name: Build
-      run: cmake --build build --config ${{ matrix.build_type }}
+      run: cmake --build . --config Release
 
-    - name: Upload Executable
-      uses: actions/upload-artifact@v4
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
       with:
-        name: compiled-binaries
-        path: build/**/*.exe
+        name: build
+        path: build/
