@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(FuKBot)
+project(FuKBoT)
 
 # Set the C++ standard
 set(CMAKE_CXX_STANDARD 17)
@@ -14,7 +14,7 @@ endif()
 
 
 # Specify output directories
-set_target_properties(FuKBot PROPERTIES
+set_target_properties(FuKBoT PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
     ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
