@@ -8,7 +8,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Setup Chocolatey
       run: |
@@ -18,11 +18,10 @@ jobs:
 
     - name: Install Dependencies
       run: |
-        choco install cmake --version=3.20.0
-        choco install gcc
-        # Manually install winpthreads if not available through Chocolatey
-        Invoke-WebRequest -Uri "https://sourceforge.net/projects/mingw-w64/files/latest/download" -OutFile "$env:TEMP\mingw-w64.exe"
-        Start-Process "$env:TEMP\mingw-w64.exe" -ArgumentList "/SILENT" -NoNewWindow -Wait
+        choco install cmake -y
+        choco install gcc --pre -y
+        # Alternative installation method for mingw-w64
+        choco install mingw -y
 
     - name: Configure CMake
       run: |
