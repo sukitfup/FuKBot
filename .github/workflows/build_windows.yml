@@ -43,5 +43,5 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: build
-        path: build/
+        name: FuKBoTWiN
+        path: build/bin
