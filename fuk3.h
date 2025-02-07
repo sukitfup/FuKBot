@@ -33,7 +33,6 @@
 	#include <stdio.h>
 	#include <string.h>
 	#include <stdarg.h>
-	#include "pthread.h"
 	#include <chrono>
 	#include <thread>
 	#include <vector>
