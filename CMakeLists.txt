@@ -15,8 +15,8 @@ set_target_properties(FuKBot PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
 )
 
-# Include directories
-include_directories(include)
-
-# Link libraries
-target_link_libraries(FuKBot ws2_32 pthread)
+if(WIN32)
+    target_link_libraries(FuKBot ws2_32 pthread)
+else()
+    target_link_libraries(FuKBot pthread)
+endif()
