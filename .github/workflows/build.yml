@@ -9,15 +9,20 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
-
+    
     - name: Install Chocolatey
       run: |
         Set-ExecutionPolicy Bypass -Scope Process -Force; `
         [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; `
         iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
 
-    - name: Install mingw-w64
-      run: choco install mingw -y
+    - name: Install vcpkg
+      run: |
+        git clone https://github.com/microsoft/vcpkg.git
+        .\vcpkg\bootstrap-vcpkg.bat
+
+    - name: Install dependencies
+      run: .\vcpkg\vcpkg install pthreads
 
     - name: Setup CMake
       uses: lukka/get-cmake@latest
@@ -25,8 +30,11 @@ jobs:
     - name: Clean CMake Cache
       run: Remove-Item -Recurse -Force build
 
+    - name: Configure CMake
+      run: cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=.\vcpkg\scripts\buildsystems\vcpkg.cmake
+
     - name: Build
-      run: cmake --build . --config Release
+      run: cmake --build build --config Release
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
