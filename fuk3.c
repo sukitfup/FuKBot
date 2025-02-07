@@ -1194,6 +1194,7 @@ int read_config() {
         int sockinlen = 16;
         struct sockaddr_in name2 = { AF_INET, 0, INADDR_ANY };
         struct sockaddr_in name;
+	struct addrinfo hints, *res;
 
         memset(&hints, 0, sizeof(hints));
         hints.ai_family = AF_INET;
