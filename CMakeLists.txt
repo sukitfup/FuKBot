@@ -19,4 +19,4 @@ set_target_properties(FuKBot PROPERTIES
 include_directories(include)
 
 # Link libraries
-target_link_libraries(FuKBot pthread)
+target_link_libraries(FuKBot ws2_32 pthread)
