@@ -1147,18 +1147,27 @@ int read_config() {
 }
 
 #if defined(WINDOWS_CPP_BUILD)
-    int Connect(int s, struct timeval tv, struct data* pb) {
-	    fd_set fdr, fdw;
-	    int on=1, err=0, errlen=4;
-	    int sockinlen=16;
-        struct sockaddr_in name;
-        struct sockaddr_in name2 = { AF_INET, 0, INADDR_ANY };
+	int Connect(int s, struct timeval tv, struct data* pb) {
+	fd_set fdr, fdw;
+	int on=1, err=0, errlen=4;
+	int sockinlen=16;
+	struct sockaddr_in name;
+	struct sockaddr_in name2 = { AF_INET, 0, INADDR_ANY };
+        struct addrinfo hints, *res;
 
+        memset(&hints, 0, sizeof(hints));
+        hints.ai_family = AF_INET;
+        hints.ai_socktype = SOCK_STREAM;
+
+        if (getaddrinfo(pb->server, NULL, &hints, &res) != 0) {
+            return INVALID_SOCKET;
+        }
+	
         name.sin_family = AF_INET;
-	    name.sin_port = htons(pb->port);
-	    inet_pton(AF_INET, pb->server, &(name.sin_addr));
+        name.sin_port = htons(pb->port);
+        name.sin_addr = ((struct sockaddr_in *)res->ai_addr)->sin_addr;
 
-        inet_pton(AF_INET, bindaddr, &(name2.sin_addr)); //pb->bindaddr
+        inet_pton(AF_INET, bindaddr, &(name2.sin_addr));
         if (bind(s, (PSOCKADDR)&name2, sizeof(name2)) == INVALID_SOCKET) {
             return INVALID_SOCKET;
         }
@@ -1166,42 +1175,56 @@ int read_config() {
         ioctl(s, FIONBIO, (u_long*)&on);
 
         FD_ZERO(&fdr); FD_SET(s,&fdr); fdw=fdr;
-	    connect(s,(struct sockaddr *)&name,sizeof(name));
-	    select(s+1,&fdr,&fdw,NULL,(struct timeval *)&tv);
+        connect(s,(struct sockaddr *)&name,sizeof(name));
+        select(s+1,&fdr,&fdw,NULL,(struct timeval *)&tv);
 
-	    if (FD_ISSET(s,&fdw)) {
-		    getsockopt(s, SOL_SOCKET, SO_ERROR, (char*)&err, &errlen);
-	    }else {
-	        err= -1;
-	    }
-	    return err;
+        if (FD_ISSET(s,&fdw)) {
+            getsockopt(s, SOL_SOCKET, SO_ERROR, (char*)&err, &errlen);
+        } else {
+            err = -1;
+        }
+
+        freeaddrinfo(res);
+        return err;
     }
 #else
     int Connect(int s, struct timeval tv, struct data* pb) {
         fd_set fdr, fdw;
         int on = 1, err = 0, errlen = 4;
         int sockinlen = 16;
-        struct sockaddr_in sockin;
         struct sockaddr_in name2 = { AF_INET, 0, INADDR_ANY };
         struct sockaddr_in name;
-        name.sin_family = AF_INET;
-        name.sin_port = htons(pb->port);
-        inet_pton(AF_INET, pb->server, &(name.sin_addr));
-        inet_pton(AF_INET, bindaddr, &(name2.sin_addr));
-        if (bind(s, (const struct sockaddr*)&name2, sizeof(name2)) == INVALID_SOCKET) {
+
+        memset(&hints, 0, sizeof(hints));
+        hints.ai_family = AF_INET;
+        hints.ai_socktype = SOCK_STREAM;
+
+        if (getaddrinfo(pb->server, NULL, &hints, &res) != 0) {
             return INVALID_SOCKET;
         }
+	    
+        name.sin_family = AF_INET;
+        name.sin_port = htons(pb->port);
+	name.sin_addr = ((struct sockaddr_in *)res->ai_addr)->sin_addr;
+	    
+        inet_pton(AF_INET, bindaddr, &(name2.sin_addr));
+        if (bind(s, (const struct sockaddr*)&name2, sizeof(name2)) == INVALID_SOCKET) {
+            freeaddrinfo(res);
+            return INVALID_SOCKET;
+        }
+
         set_nonblock(s);
         FD_ZERO(&fdr); FD_SET(s, &fdr); fdw = fdr;
         connect(s, (struct sockaddr*)&name, sizeof(name));
-        //printf("%s Attempting to connect on socket %d\n", pb->username, s);
         select(s + 1, &fdr, &fdw, NULL, (struct timeval*)&tv);
+
         if (FD_ISSET(s, &fdw)) {
             getsockopt(s, SOL_SOCKET, SO_ERROR, &err, &errlen);
-        }
-        else {
+        } else {
             err = -1;
         }
+
+        freeaddrinfo(res);
         return err;
     }
 #endif
