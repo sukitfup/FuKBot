@@ -1,14 +1,20 @@
-name: CMake on Windows
+name: CMake
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  BUILD_TYPE: Release
 
 jobs:
   build:
     runs-on: windows-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+    - uses: actions/checkout@v3
 
     - name: Install MSYS2
       uses: msys2/setup-msys2@v2
@@ -19,14 +25,11 @@ jobs:
         pacman -S --noconfirm mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake
 
     - name: Configure CMake
-      run: |
-        cmake -G "MinGW Makefiles" -B build -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=Release
+      run: cmake -G "MinGW Makefiles" -B build -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
     - name: Build
-      run: cmake --build build --config Release
+      run: cmake --build build --config ${{env.BUILD_TYPE}}
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: FuKBot-executable
-        path: build/bin/FuKBot.exe
+    - name: Test
+      working-directory: ${{github.workspace}}/build
+      run: ctest -C ${{env.BUILD_TYPE}}
