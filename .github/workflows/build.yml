@@ -17,7 +17,7 @@ jobs:
         iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
 
     - name: Install mingw-w64
-      run: choco install mingw-w64 --version=13.2.0 -y
+      run: choco install mingw-w64 -y
 
     - name: Setup CMake
       uses: lukka/get-cmake@latest
