@@ -20,7 +20,7 @@ jobs:
       run: choco install mingw-w64 --version=13.2.0 -y
 
     - name: Setup CMake
-      uses: lukka/get-cmake@v3.20.0
+      uses: lukka/get-cmake@latest
 
     - name: Build
       run: cmake --build . --config Release
