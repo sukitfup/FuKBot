@@ -99,8 +99,13 @@ void cfgStuff(int s, struct data* pb, char* com, char* text) {
     int once = 1;
     char* pos;
     int replace = 0;
+    #if defined(WINDOWS_CPP_BUILD)
+    char* list = strtok_s(text, " ", &pos);
+    char* name = strtok_s(NULL, " ", &pos;
+    #else
     char* list = strtok_r(text, " ", &pos);
     char* name = strtok_r(NULL, " ", &pos);
+    #endif
     if (strstr(list, CFGSTUFF_MASTER)) {
         for (x = 0; x < masterSz; x++) {
             if (!strcasecmp(CFGSTUFF_LIST, com)) {
@@ -706,8 +711,87 @@ void OnChannel(int s, struct data* pb, char* szEventText) {
         msleep(3000);
         return;
     }
-} /* you dont need a return at the end of a void function [remove this note if you ever revisit it] */
-
+}
+#if defined(WINDOWS_CPP_BUILD)
+void OnInfo(int s, struct data *pb, char *szEventText) {
+    if (strstr(szEventText, BASE_INIT6)) {
+        return;
+    }
+    else if (strstr(szEventText, BASE_SETTHETOPIC)) {
+        return;
+    }
+    else if (strstr(szEventText, BASE_WASKICKED)) {
+        return;
+    }
+    else if (strstr(szEventText, BASE_WASBANNED)) {
+        return;
+    }
+    else if (strstr(szEventText, BASE_WASUNBANNED)) {
+        return;
+    }
+    else if (strstr(szEventText, BASE_NOCHATPRIV)) {
+        return;
+    }
+    else if (strstr(szEventText, BASE_CHATCHANNEL)) {
+        return;
+    }
+    else if (strstr(szEventText, BASE_CHANNELUSERS)) {
+        return;
+    }
+    else if(strstr(szEventText, BASE_NEWHEIR)) {
+        pb->des=1;
+        if(pb->op!=0 && pb->hasop!=0) {
+            pb->op=0;
+            Send(s, SERVER_COMMAND_0, SERVER_RESIGN);
+            msleep(3000);
+        }
+        return;
+    }
+    else if(strstr(szEventText, BASE_PLACED)) {
+        char *tmp;
+        char *pos;
+        tmp=strtok_s(szEventText, " ", &pos);
+        tmp=strtok_s(NULL, " ", &pos);
+        tmp=strtok_s(NULL, " ", &pos);
+        pb->place=atoi(tmp);
+        return;
+    }
+    else if(strstr(szEventText, BASE_CUPTIME)) {
+        char *tmp;
+        char *pos;
+        tmp=strtok_s(szEventText, "\r\n", &pos);
+        Send(s, SERVER_BASE_SPEAK, tmp);
+        msleep(3000);
+        return;
+    }
+    else if(strstr(szEventText, BASE_YOUWEREKICKED)){
+        pb->chanham=1;
+        Send(s, SERVER_COMMAND_1, SERVER_JOIN, backup);
+        msleep(3000);
+        return;
+    } 
+    else {
+        char *pos;
+        char *user1;
+        char *user2;
+        user1 = strtok_s(szEventText, ", ", &pos);
+        if(user1!=NULL) {
+            while ((*user1 == ' ')) {
+                ++user1;
+            }
+            OnJoin(s, pb, user1);
+        }
+        user2 = strtok_s(NULL, "\r\n", &pos);
+        if(user2!=NULL) {
+            while ((*user2 == ' ')) {
+                ++user2;
+            }
+            OnJoin(s, pb, user2);
+        }
+        return; /* this return dosent need to be here but whatever lol */
+    }
+}
+#else
 void OnInfo(int s, struct data *pb, char *szEventText) {
     if (strstr(szEventText, BASE_INIT6)) {
         return;
@@ -786,6 +870,7 @@ void OnInfo(int s, struct data *pb, char *szEventText) {
         return; /* this return dosent need to be here but whatever lol */
     }
 }
+#endif
 
 void OnError(int s, struct data *pb, char *szEventText) {
     if (strstr(szEventText, BASE_CHANRESTRICTED_TEXT)) {
@@ -812,7 +897,88 @@ void OnPing(int s, struct data *pb, char *szEventText) {
         return;
     }
 }
-
+#if defined(WINDOWS_CPP_BUILD)
+void Dispatch(int s, struct data *pb, char *szEventText) {
+    char *eventType;
+    char *pos;
+    char *USER_CMD;
+    char *USER_FLAGS;
+    char *USER_PING;
+    char *USER_NAME;
+    char *USER_DIRECTION;
+    char *USER_MSG;
+    char *CHANNEL_CMD;
+    char *CHANNEL_NAME;
+    char *SERVER_MSG;
+    char *SERVER_CMD;
+    char *PING;
+    eventType = strtok_r(szEventText, " ", &pos);
+    if(!strcasecmp(eventType, "USER")) {
+        USER_CMD = strtok_r(NULL, " ", &pos);
+        if(!strcasecmp(USER_CMD, "IN")) {
+            USER_FLAGS = strtok_s(NULL, " ", &pos);
+            USER_PING = strtok_s(NULL, " ", &pos);
+            USER_NAME = strtok_s(NULL, " ", &pos);
+            OnUserFlags(s, pb, USER_NAME, atoi(USER_FLAGS));
+            return;
+        } else if(!strcasecmp(USER_CMD, "UPDATE")) {
+            USER_FLAGS = strtok_s(NULL, " ", &pos);
+            USER_PING = strtok_s(NULL, " ", &pos);
+            USER_NAME = strtok_s(NULL, " ", &pos);
+            OnUserFlags(s, pb, USER_NAME, atoi(USER_FLAGS));
+            return;
+        } else if(!strcasecmp(USER_CMD, "EMOTE")) {
+            USER_NAME = strtok_s(NULL, " ", &pos);
+            USER_MSG = strtok_s(NULL, " ", &pos);
+            OnTalk(s, pb, USER_NAME, USER_MSG);
+            return;
+        } else if(!strcasecmp(USER_CMD, "JOIN")) {
+            USER_FLAGS = strtok_s(NULL, " ", &pos);
+            USER_PING = strtok_s(NULL, " ", &pos);
+            USER_NAME = strtok_s(NULL, " ", &pos);
+            OnJoin(s, pb, USER_NAME);
+            return;
+        } else if(!strcasecmp(USER_CMD, "WHISPER")) {
+            USER_DIRECTION = strtok_r(NULL, " ", &pos);
+            USER_NAME = strtok_s(NULL, " ", &pos);
+            USER_MSG = strtok_s(NULL, "\r\n", &pos);
+            OnTalk(s, pb, USER_NAME, USER_MSG);
+            return;
+        } else if(!strcasecmp(USER_CMD, "TALK")) {
+            USER_DIRECTION = strtok_s(NULL, " ", &pos);
+            USER_NAME = strtok_s(NULL, " ", &pos);
+            USER_MSG = strtok_s(NULL, "\r\n", &pos);
+            OnTalk(s , pb, USER_NAME, USER_MSG);
+            return;
+        }else
+            return;
+    } else if(!strcasecmp(eventType, "CHANNEL")) {
+        CHANNEL_CMD = strtok_s(NULL, " ", &pos);
+        if(!strcasecmp(CHANNEL_CMD, "JOIN")) {
+            CHANNEL_NAME = strtok_s(NULL, "\r\n", &pos);
+            OnChannel(s, pb, CHANNEL_NAME);
+        }
+        return;
+    } else if(!strcasecmp(eventType, "SERVER")) {
+        SERVER_CMD = strtok_s(NULL, " ", &pos);
+        if(!strcasecmp(SERVER_CMD, "INFO")) {
+            SERVER_MSG = strtok_s(NULL, "\r\n", &pos);
+            OnInfo(s, pb, SERVER_MSG);
+            return;
+        } else if(!strcasecmp(SERVER_CMD, "ERROR")) {
+            SERVER_MSG = strtok_s(NULL, "\r\n", &pos);
+            OnError(s, pb, SERVER_MSG);
+            return;
+        } else
+            return;
+    } else if(!strcasecmp(eventType, "PING")) {
+        PING = strtok_s(NULL, " ", &pos);
+        OnPing(s, pb, PING);
+        return;
+    } else
+        return;
+}
+#else
 void Dispatch(int s, struct data *pb, char *szEventText) {
     char *eventType;
     char *pos;
@@ -893,11 +1059,8 @@ void Dispatch(int s, struct data *pb, char *szEventText) {
     } else
         return;
 }
+#endif
 
-/*
-    local variable "int try" was getting caught as a (try/catch) block
-    wasent needed regardless just return the send().
-*/
 int Send(int s, const char* lpszFmt, ...) {
     char szOutStr[256];
     va_list argptr;
