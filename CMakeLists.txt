@@ -16,7 +16,8 @@ set_target_properties(FuKBot PROPERTIES
 )
 
 if(WIN32)
-    target_link_libraries(FuKBot ws2_32 pthread)
+    find_package(Threads REQUIRED)
+    target_link_libraries(FuKBot PRIVATE ws2_32 Threads::Threads)
 else()
-    target_link_libraries(FuKBot pthread)
+    target_link_libraries(FuKBot PRIVATE pthread)
 endif()
