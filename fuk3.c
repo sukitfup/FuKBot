@@ -122,12 +122,19 @@ void processList(int s, char* com, char* name, char* list, void* array, int* siz
             }
             if (replace) {
                 if (x < *size - 1) {
-                    memmove(listArray[x].id, listArray[x + 1].id, sizeof(listArray[x].id));
+                    // Shift items **before** resizing memory
+                    memmove(&listArray[x], &listArray[x + 1], (*size - x - 1) * sizeof(masterList));
                 }
-                masterList* temp = (masterList*)reallocarray(listArray, --(*size), sizeof(masterList));
-                if (temp != NULL) {
-                    listArray = temp;
+
+                // Allocate new memory **after shifting**
+                masterList* temp = (masterList*)reallocarray(listArray, (*size - 1), sizeof(masterList));
+                if (temp) {
+                    listArray = temp;  // Update pointer only if realloc succeeds
+                    (*size)--;         // Now it's safe to decrement the size
+                } else {
+                    perror("reallocarray failed");  // Log error but keep old list intact
                 }
+
                 if (once) {
                     Send(s, CFGSTUFF_FORMATTING_TO_FROM_SECTION, com, name, CFGSTUFF_FROM, list);
                     once = 0;
@@ -142,19 +149,24 @@ void processList(int s, char* com, char* name, char* list, void* array, int* siz
             }
         }
     }
+    // Handle adding a new entry safely
     if (!strcasecmp(CFGSTUFF_ADD, com) && name != NULL) {
-        masterList* temp = (masterList*)reallocarray(listArray, ++(*size), sizeof(masterList));
-        if (temp != NULL) {
-            listArray = temp;
+        masterList* temp = (masterList*)reallocarray(listArray, (*size + 1), sizeof(masterList));
+        if (temp) {
+            listArray = temp;  // Update pointer only if realloc succeeds
+            (*size)++;         // Increment size after successful allocation
+
             int ps = *size - 1;
             memset(listArray[ps].id, 0, sizeof(listArray[ps].id));
             strncpy(listArray[ps].id, name, sizeof(listArray[ps].id) - 1);
+
             Send(s, CFGSTUFF_FORMATTING_TO_FROM_SECTION, com, name, CFGSTUFF_TO, list);
             msleep(3000);
+        } else {
+            perror("reallocarray failed to add entry");  // Log error
         }
     }
 }
-
 
 void cfgStuff(int s, struct data* pb, char* com, char* text) {
     char* pos;
