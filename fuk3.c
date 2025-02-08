@@ -271,7 +271,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
         }
 
         // Resolve the command to an enum
-        enum CommandID cmd = resolve_command(com);
+        CommandID cmd = resolve_command(com);
 
         // Switch on the enum for clearer code
         switch (cmd)
