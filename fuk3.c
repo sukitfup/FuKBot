@@ -1272,14 +1272,14 @@ int read_config() {
 int Connect(int s, struct timeval tv, struct data* pb) {
     struct sockaddr_in bind_addr = { .sin_family = AF_INET };
     struct sockaddr_in server_addr;
-    struct addrinfo hints = {0}, *res;
+    struct addrinfo hints = {0}, *res = NULL;
     fd_set fdr, fdw;
     int err = 0, errlen = sizeof(err);
 
     // Resolve server address
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
-    
+
     if (getaddrinfo(pb->server, NULL, &hints, &res) != 0) {
         return -1;  // Address resolution failed
     }
@@ -1292,7 +1292,7 @@ int Connect(int s, struct timeval tv, struct data* pb) {
     // Bind socket (optional, only if `bindaddr` is set)
     if (bindaddr && inet_pton(AF_INET, bindaddr, &bind_addr.sin_addr) > 0) {
         if (bind(s, (struct sockaddr*)&bind_addr, sizeof(bind_addr)) < 0) {
-            freeaddrinfo(res);
+            if (res) freeaddrinfo(res); // Ensure res is valid before freeing
             return -2;  // Binding failed
         }
     }
@@ -1309,7 +1309,7 @@ int Connect(int s, struct timeval tv, struct data* pb) {
     FD_SET(s, &fdw);
 
     if (select(s + 1, &fdr, &fdw, NULL, &tv) <= 0) {
-        freeaddrinfo(res);
+        if (res) freeaddrinfo(res);
         return -3;  // Timeout or error
     }
 
@@ -1317,17 +1317,19 @@ int Connect(int s, struct timeval tv, struct data* pb) {
     if (FD_ISSET(s, &fdw)) {
         getsockopt(s, SOL_SOCKET, SO_ERROR, &err, &errlen);
         if (err != 0) {
-            freeaddrinfo(res);
+            if (res) freeaddrinfo(res);
             return -4;  // Connection failed
         }
     } else {
-        freeaddrinfo(res);
+        if (res) freeaddrinfo(res);
         return -5;  // Unexpected failure
     }
 
-    freeaddrinfo(res);
+    // Free memory only once before returning successfully
+    if (res) freeaddrinfo(res);
     return 0;  // Successfully connected
 }
+
 
 void* thread_conn(void* arg) {
     struct data* pb = (struct data*)arg;
