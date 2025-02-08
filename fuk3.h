@@ -354,7 +354,11 @@ struct data {
 struct data *pb;
 
 #if !defined(WINDOWS_CPP_BUILD)
-	void set_nonblock(int fd);
+void set_nonblock(int fd);
+void free_config();
+void clean_exit(int status);
+void setup_signal_handlers();
+int try_connect(struct data* pb, struct timeval tv);
 #endif
 void cfgStuff(int s, struct data* pb, char* com, char* text);
 void OnJoin(int s, struct data* pb, char* szSpeaker);
