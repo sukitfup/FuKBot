@@ -1103,43 +1103,69 @@ void* thread_conn(void* arg) {
 }
 
 void create_threads(struct data* pb) {
-	int err;
-	int i = 0;
-	int numThreads = numBots * threads;
-	pthread_t thread[numThreads];
-	//Create and configure each bot.
-	for (int t = 0; t < numBots; t++, pb++) {
-	    char *replaced = replace_str(username, (char*)"#", t);
-	    char locName[20] = { 0 };
-	    memcpy(locName, replaced, strlen(replaced));
-	    //char *thisBotsName = strdup(replace_str(username, (char*)"#", t));
-	    //There's no need to do this more than once.
-	    if (strcmp(pb->username, locName) != 0) {
-		strcpy(pb->username, locName);
-		strcpy(pb->password, password);
-		strcpy(pb->channel, channel);
-		strcpy(pb->server, server);
-		strcpy(pb->trigger, trigger);
-	    }
-	    pb->botNum = t;
-	    pb->port = port;
-	    pb->threads = threads;
-	    memset(pb->logonPacket, '\0', sizeof(pb->logonPacket));
-	    sprintf(pb->logonPacket, "C1\r\nACCT %s\r\nPASS %s\r\nHOME %s\r\nLOGIN\r\n", pb->username, pb->password, pb->channel);
-	    //Create threads for each bot.
-	    for (int z = 0; z < threads; z++, i++) {
-		err = pthread_create(&thread[i], NULL, thread_conn, pb);
-		if (err < 0)
-		    perror("pthread_create");
-	    }
-	}
-	//Join threads if they haven't already kilt themselves.
-	for (int t = 0; t < numThreads; t++) {
-	    err = pthread_join(thread[t], NULL);
-	    if (err < 0)
-		perror("pthread_exit");
-	}
-	msleep(conWait * 1000);
+    int err;
+    int i = 0;
+    int numThreads = numBots * threads;
+
+    // Dynamically allocate the thread array to avoid stack overflow issues
+    pthread_t *thread = malloc(numThreads * sizeof(pthread_t));
+    if (!thread) {
+        perror("malloc failed for thread array");
+        return;
+    }
+
+    // Create and configure each bot
+    for (int t = 0; t < numBots; t++, pb++) {  
+        char *replaced = replace_str(username, "#", t);
+        if (!replaced) {
+            continue;
+        }
+
+        // Ensure null termination of the username
+        strncpy(pb->username, replaced, sizeof(pb->username) - 1);
+        pb->username[sizeof(pb->username) - 1] = '\0';
+        free(replaced); // Free dynamically allocated replaced string
+
+        strncpy(pb->password, password, sizeof(pb->password) - 1);
+        pb->password[sizeof(pb->password) - 1] = '\0';
+
+        strncpy(pb->channel, channel, sizeof(pb->channel) - 1);
+        pb->channel[sizeof(pb->channel) - 1] = '\0';
+
+        strncpy(pb->server, server, sizeof(pb->server) - 1);
+        pb->server[sizeof(pb->server) - 1] = '\0';
+
+        strncpy(pb->trigger, trigger, sizeof(pb->trigger) - 1);
+        pb->trigger[sizeof(pb->trigger) - 1] = '\0';
+
+        pb->botNum = t;
+        pb->port = port;
+        pb->threads = threads;
+
+        memset(pb->logonPacket, 0, sizeof(pb->logonPacket));
+        snprintf(pb->logonPacket, sizeof(pb->logonPacket), 
+                 "C1\r\nACCT %s\r\nPASS %s\r\nHOME %s\r\nLOGIN\r\n", 
+                 pb->username, pb->password, pb->channel);
+
+        // Create threads for each bot
+        for (int z = 0; z < threads; z++, i++) {
+            err = pthread_create(&thread[i], NULL, thread_conn, pb);
+            if (err != 0) {
+                fprintf(stderr, "pthread_create failed: %s\n", strerror(err));
+            }
+        }
+    }
+
+    // Join threads
+    for (int t = 0; t < numThreads; t++) {
+        err = pthread_join(thread[t], NULL);
+        if (err != 0) {
+            fprintf(stderr, "pthread_join failed: %s\n", strerror(err));
+        }
+    }
+
+    free(thread); // Free dynamically allocated memory
+    msleep(conWait * 1000);
 }
 
 int main() {
