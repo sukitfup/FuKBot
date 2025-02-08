@@ -362,10 +362,8 @@ void OnPing(int s, struct data* pb, char* szEventText);
 void Dispatch(int s, struct data* pb, char* szEventText);
 int Send(int s, const char* lpszFmt, ...); /* match vars */
 void message_loop(int s, struct data* pb);
-#ifdef _WIN32
-void msleep(unsigned long milisec) {
-    Sleep(milisec);
-}
+#if !defined(WINDOWS_CPP_BUILD)
+	void msleep(unsigned long milisec);
 #else
 void msleep(unsigned long milisec);
 #endif
