@@ -14,6 +14,25 @@ void set_nonblock(int s) {
     }
 }
 
+// Memory allocation (call this in `main()`)
+void allocate_lists() {
+    shit = malloc(sizeof(ListEntry) * shitSz);
+    des = malloc(sizeof(ListEntry) * desSz);
+    safe = malloc(sizeof(ListEntry) * safeSz);
+    master = malloc(sizeof(ListEntry) * masterSz);
+
+    if (!shit || !des || !safe || !master) {
+        perror("Memory allocation failed for lists");
+        exit(1);
+    }
+
+    pb = malloc(sizeof(struct data));
+    if (!pb) {
+        perror("Memory allocation failed for pb");
+        exit(1);
+    }
+}
+
 void free_config() {
     if (master) {
         free(master);
@@ -1379,14 +1398,10 @@ int main() {
         return EXIT_SUCCESS;  // Parent process exits cleanly
     }
 
+    allocate_lists();
+    
     if (read_config() != 0) {
         perror("Read config error");
-        clean_exit(EXIT_FAILURE);
-    }
-
-    pb = (struct data*)calloc(numBots, sizeof(struct data));
-    if (!pb) {
-        perror("Memory allocation failed");
         clean_exit(EXIT_FAILURE);
     }
 
