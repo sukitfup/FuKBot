@@ -355,36 +355,7 @@ struct data {
 struct data *pb;
 
 #if !defined(WINDOWS_CPP_BUILD)
-void set_nonblock(int fd);
-void free_config();
-void clean_exit(int status);
-void setup_signal_handlers();
-void processList(int s, char* com, char* name, char* list, void* array, int* size, const char* type);
-int try_connect(struct data* pb, struct timeval tv);
-#endif
-void cfgStuff(int s, struct data* pb, char* com, char* text);
-void OnJoin(int s, struct data* pb, char* szSpeaker);
-void OnUserFlags(int s, struct data* pb, char* szSpeaker, u_long uFlags);
-void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText);
-void OnChannel(int s, struct data* pb, char* szEventText);
-void OnInfo(int s, struct data* pb, char* szEventText);
-void OnError(int s, struct data* pb, char* szEventText);
-void OnPing(int s, struct data* pb, char* szEventText);
-void Dispatch(int s, struct data* pb, char* szEventText);
-int Send(int s, const char* lpszFmt, ...); /* match vars */
-void message_loop(int s, struct data* pb);
-#if defined(WINDOWS_CPP_BUILD)
-void msleep(unsigned long milisec);
-#endif
-char* replace_str(char* str, char* orig, int rep);
-int save_cfg(struct data* pb);
-int read_config();
-int Connect(int s, struct timeval tv, struct data* pb);
-void* thread_conn(void* arg);
-void create_threads(struct data* pb);
 
-#if !defined(WINDOWS_CPP_BUILD)
-static enum CommandID resolve_command(const char* com)
 typedef enum {
     CMD_UNKNOWN,
     CMD_CFGSTUFF_LIST,
@@ -425,4 +396,31 @@ typedef enum {
     CMD_BASE_MEM
 } CommandID;
 
+void set_nonblock(int fd);
+void free_config();
+void clean_exit(int status);
+void setup_signal_handlers();
+void processList(int s, char* com, char* name, char* list, void* array, int* size, const char* type);
+int try_connect(struct data* pb, struct timeval tv);
+static enum CommandID resolve_command(const char* com)
 #endif
+void cfgStuff(int s, struct data* pb, char* com, char* text);
+void OnJoin(int s, struct data* pb, char* szSpeaker);
+void OnUserFlags(int s, struct data* pb, char* szSpeaker, u_long uFlags);
+void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText);
+void OnChannel(int s, struct data* pb, char* szEventText);
+void OnInfo(int s, struct data* pb, char* szEventText);
+void OnError(int s, struct data* pb, char* szEventText);
+void OnPing(int s, struct data* pb, char* szEventText);
+void Dispatch(int s, struct data* pb, char* szEventText);
+int Send(int s, const char* lpszFmt, ...); /* match vars */
+void message_loop(int s, struct data* pb);
+#if defined(WINDOWS_CPP_BUILD)
+void msleep(unsigned long milisec);
+#endif
+char* replace_str(char* str, char* orig, int rep);
+int save_cfg(struct data* pb);
+int read_config();
+int Connect(int s, struct timeval tv, struct data* pb);
+void* thread_conn(void* arg);
+void create_threads(struct data* pb);
