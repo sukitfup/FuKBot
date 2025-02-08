@@ -384,10 +384,52 @@ void* thread_conn(void* arg);
 void create_threads(struct data* pb);
 
 #if !defined(WINDOWS_CPP_BUILD)
+
+// Define the CommandID enum with all required command identifiers.
+typedef enum {
+    CMD_UNKNOWN,
+    CMD_HELP,
+    CMD_EXIT,
+    CMD_CFGSTUFF_LIST,
+    CMD_CFGSTUFF_ADD,
+    CMD_CFGSTUFF_REM,
+    CMD_BASE_TRIGGER,
+    CMD_BASE_HOME,
+    CMD_BASE_TOPIC,
+    CMD_BASE_BACKUP,
+    CMD_BASE_SERVER,
+    CMD_BASE_THREADS,
+    CMD_BASE_PORT,
+    CMD_BASE_DELAY,
+    CMD_BASE_DELAY_2,
+    CMD_BASE_SCATTER,
+    CMD_BASE_BANWAIT,
+    CMD_BASE_CONWAIT,
+    CMD_BASE_SAY,
+    CMD_BASE_VER,
+    CMD_BASE_QUIT,
+    CMD_BASE_RECON,
+    CMD_BASE_PLACE,
+    CMD_BASE_PING,
+    CMD_SERVER_BAN,
+    CMD_SERVER_UNBAN,
+    CMD_SERVER_KICK,
+    CMD_SERVER_JOIN,
+    CMD_SERVER_REJOIN,
+    CMD_BASE_DES,
+    CMD_SERVER_RESIGN,
+    CMD_SERVER_UPTIME,
+    CMD_BASE_OP,
+    CMD_BASE_LOCK,
+    CMD_BASE_UNLOCK,
+    CMD_BASE_CLEAN,
+    CMD_BASE_TAG,
+    CMD_BASE_CONTIME,
+    CMD_BASE_MEM
+} CommandID;
+
 static enum CommandID resolve_command(const char* com)
 {
-    if (!com) return CMD_UNKNOWN;
-
     if (!strcasecmp(com, CFGSTUFF_LIST))      return CMD_CFGSTUFF_LIST;
     if (!strcasecmp(com, CFGSTUFF_ADD))       return CMD_CFGSTUFF_ADD;
     if (!strcasecmp(com, CFGSTUFF_REM))       return CMD_CFGSTUFF_REM;
@@ -424,8 +466,5 @@ static enum CommandID resolve_command(const char* com)
     if (!strcasecmp(com, BASE_TAG))           return CMD_BASE_TAG;
     if (!strcasecmp(com, BASE_CONTIME))       return CMD_BASE_CONTIME;
     if (!strcasecmp(com, BASE_MEM))           return CMD_BASE_MEM;
-
-    // If none matched, return unknown
-    return CMD_UNKNOWN;
 }
 #endif
