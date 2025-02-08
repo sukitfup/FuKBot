@@ -159,7 +159,7 @@ void processList(int s, char* com, char* name, char* list, void **pArray, int *p
 void cfgStuff(int s, struct data* pb, char* com, char* text) {
     char* pos;
     char textBuffer[FUK_CFG_MAXCOUNT];
-    snprintf(buffer, sizeof(textBuffer), "%s", text);
+    snprintf(textBuffer, sizeof(textBuffer), "%s", text);
 
     char* list = strtok_r(textBuffer, " ", &pos);
     if (!list) return;
