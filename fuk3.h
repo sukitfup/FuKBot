@@ -384,7 +384,7 @@ void* thread_conn(void* arg);
 void create_threads(struct data* pb);
 
 #if !defined(WINDOWS_CPP_BUILD)
-
+static enum CommandID resolve_command(const char* com)
 typedef enum {
     CMD_UNKNOWN,
     CMD_CFGSTUFF_LIST,
