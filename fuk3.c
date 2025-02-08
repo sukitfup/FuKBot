@@ -1337,8 +1337,6 @@ void* thread_conn(void* arg) {
 void create_threads(struct data *pb) {
     int err;
     int numThreads = numBots * threads;
-
-    int numThreads = numBots * threads;
     pthread_t thread[numThreads];
     if (!thread) {
         perror("malloc failed for thread array");
