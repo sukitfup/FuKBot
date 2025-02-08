@@ -943,7 +943,7 @@ int read_config() {
     char r[MAX_LINE_SIZE];
     size_t i = 0, j = 0, k = 0, d = 0;
 
-    while (fgets(r, MAX_LINE_SIZE, cfg)) {
+    while (fgets(r, FUK_CFG_MAXCOUNT, cfg)) {
         strtok(r, "\r\n"); // Remove newlines
 
         if (!memcmp(r, FUK_CFG_USERNAME, strlen(FUK_CFG_USERNAME))) {
