@@ -237,359 +237,543 @@ CommandID resolve_command(const char* com) {
     return CMD_UNKNOWN;
 }
 
-void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText) {
+// The OnTalk function
+void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
+{
     int i = 0;
     int doStuff = 0;
-    char* com;
-    char pi[512];
-    FILE* fp1;
-    char pingStr[250];
-    for (i = 0; i < masterSz; i++) {
-        if (!strcasecmp(szSpeaker, master[i].id))
-            doStuff = 1;
-    }
-    if (doStuff != 1)
-        return;
-    else {
-        if (szEventText[0] == pb->trigger[0] || szEventText[0] == "?"[0]) {
-            char tmpBuf[256] = { 0 };
-            memcpy(tmpBuf, szEventText + 1, strlen(szEventText + 1));
-            char* ptrDat = tmpBuf;
-            com = strsep(&ptrDat, " ");
 
-            if (com != NULL) {
-                if (!strcasecmp(CFGSTUFF_LIST, com) && ptrDat != NULL) {
-                    if (pb->botNum == 0)
-                        cfgStuff(s, pb, com, ptrDat);
-                    return;
+    // Basic sanity checks
+    if (!pb || !szSpeaker || !szEventText) return;
+
+    // Check if speaker is in master list
+    for (i = 0; i < masterSz; i++) {
+        if (!strcasecmp(szSpeaker, master[i].id)) {
+            doStuff = 1;
+            break;
+        }
+    }
+
+    // If speaker not recognized, return
+    if (!doStuff) return;
+
+    // Check if the message starts with the bot's trigger or a '?' 
+    if (szEventText[0] == pb->trigger[0] || szEventText[0] == '?') {
+        // Create a buffer for the command string (everything after the first character)
+        char tmpBuf[256] = {0};
+        strncpy(tmpBuf, szEventText + 1, sizeof(tmpBuf) - 1);
+
+        // Use strsep to separate the first token (command) from the rest (arguments)
+        char* ptrDat = tmpBuf;
+        char* com = strsep(&ptrDat, " ");
+        if (!com) {
+            return;  // no command found
+        }
+
+        // Resolve the command to an enum
+        enum CommandID cmd = resolve_command(com);
+
+        // Switch on the enum for clearer code
+        switch (cmd)
+        {
+            case CMD_CFGSTUFF_LIST:
+                if (ptrDat != NULL && pb->botNum == 0) {
+                    cfgStuff(s, pb, com, ptrDat);
                 }
-                else if (!strcasecmp(CFGSTUFF_ADD, com) && ptrDat != NULL) {
+                return;
+
+            case CMD_CFGSTUFF_ADD:
+            {
+                if (ptrDat != NULL && pb->botNum == 0) {
+                    cfgStuff(s, pb, com, ptrDat);
+                    save_cfg(pb);
+                }
+                return;
+            }
+
+            case CMD_CFGSTUFF_REM:
+            {
+                if (ptrDat != NULL && pb->botNum == 0) {
+                    cfgStuff(s, pb, com, ptrDat);
+                    save_cfg(pb);
+                }
+                return;
+            }
+
+            case CMD_BASE_TRIGGER:
+            {
+                if (ptrDat == NULL) {
                     if (pb->botNum == 0) {
-                        cfgStuff(s, pb, com, ptrDat);
-                        save_cfg(pb);
-                    } return;
-                }
-                else if (!strcasecmp(CFGSTUFF_REM, com) && ptrDat != NULL) {
+                        Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker,
+                             BASE_TRIGGER, BASE_COLON, pb->trigger);
+                        msleep(3000);
+                    }
+                } else {
+                    // Set new trigger
                     if (pb->botNum == 0) {
-                        cfgStuff(s, pb, com, ptrDat);
+                        memset(pb->trigger, 0, sizeof(pb->trigger));
+                        strncpy(pb->trigger, ptrDat, sizeof(pb->trigger) - 1);
+
+                        // Possibly also update global trigger
+                        memset(trigger, 0, sizeof(trigger));
+                        strncpy(trigger, ptrDat, sizeof(trigger) - 1);
+
                         save_cfg(pb);
-                    } return;
-                }
-                else if (!strcasecmp(BASE_TRIGGER, com)) {
-                    if (ptrDat == NULL) {
-                        if (pb->botNum == 0) {
-                            Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker, BASE_TRIGGER, BASE_COLON, pb->trigger);
-                            msleep(3000);
-                        }
-                        else
-                            return;
+                        Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker,
+                             BASE_TRIGGER, BASE_ISNOW, pb->trigger);
+                        msleep(3000);
+                    } else {
+                        memset(pb->trigger, 0, sizeof(pb->trigger));
+                        strncpy(pb->trigger, ptrDat, sizeof(pb->trigger) - 1);
                     }
-                    else if (pb->botNum == 0) {
-                        memset(pb->trigger, '\0', sizeof(pb->trigger));
-                        strcpy(pb->trigger, ptrDat);
-                        memset(trigger, '\0', sizeof(trigger));
-                        strcpy(trigger, ptrDat);
+                }
+                return;
+            }
+
+            case CMD_BASE_HOME:
+            {
+                if (ptrDat == NULL) {
+                    if (pb->botNum == 0) {
+                        Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker,
+                             BASE_HOME, BASE_COLON, pb->channel);
+                        msleep(3000);
+                    }
+                } else {
+                    if (pb->botNum == 0) {
+                        memset(pb->channel, 0, sizeof(pb->channel));
+                        strncpy(pb->channel, ptrDat, sizeof(pb->channel) - 1);
+
+                        memset(channel, 0, sizeof(channel));
+                        strncpy(channel, ptrDat, sizeof(channel) - 1);
+
                         save_cfg(pb);
-                        Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker, BASE_TRIGGER, BASE_ISNOW, pb->trigger);
+                        Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker,
+                             BASE_HOME, BASE_ISNOW, pb->channel);
+                        msleep(3000);
+                    } else {
+                        memset(pb->channel, 0, sizeof(pb->channel));
+                        strncpy(pb->channel, ptrDat, sizeof(pb->channel) - 1);
+                    }
+                }
+                return;
+            }
+
+            case CMD_BASE_TOPIC:
+            {
+                if (ptrDat == NULL) {
+                    if (pb->hasop == 1) {
+                        Send(s, SERVER_COMMAND_1, SERVER_TOPIC, topic);
+                        msleep(3000);
+                    } else if (pb->botNum == 0) {
+                        Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker,
+                             BASE_TOPIC, BASE_COLON, topic);
                         msleep(3000);
                     }
-                    else {
-                        memset(pb->trigger, '\0', sizeof(pb->trigger));
-                        strcpy(pb->trigger, ptrDat);
-                    } return;
-                }
-                else if (!strcasecmp(BASE_HOME, com)) {
-                    if (ptrDat == NULL) {
-                        if (pb->botNum == 0) {
-                            Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker, BASE_HOME, BASE_COLON, pb->channel);
-                            msleep(3000);
-                        }
-                        else
-                            return;
-                    }
-                    else if (pb->botNum == 0) {
-                        memset(pb->channel, '\0', sizeof(pb->channel));
-                        strcpy(pb->channel, ptrDat);
-                        memset(channel, '\0', sizeof(channel));
-                        strcpy(channel, ptrDat);
+                } else {
+                    if (pb->hasop == 1) {
+                        memset(topic, 0, sizeof(topic));
+                        strncpy(topic, ptrDat, sizeof(topic) - 1);
+                        Send(s, SERVER_COMMAND_1, SERVER_TOPIC, topic);
+                        msleep(3000);
+                    } else if (pb->botNum == 0) {
+                        memset(topic, 0, sizeof(topic));
+                        strncpy(topic, ptrDat, sizeof(topic) - 1);
                         save_cfg(pb);
-                        Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker, BASE_HOME, BASE_ISNOW, pb->channel);
+                        Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker,
+                             BASE_TOPIC, BASE_ISNOW, topic);
                         msleep(3000);
                     }
-                    else {
-                        memset(pb->channel, '\0', sizeof(pb->channel));
-                        strcpy(pb->channel, ptrDat);
-                    } return;
                 }
-                else if (!strcasecmp(BASE_TOPIC, com)) {
+                return;
+            }
+
+            case CMD_BASE_BACKUP:
+            {
+                if (pb->botNum == 0) {
                     if (ptrDat == NULL) {
-                        if (pb->hasop == 1) {
-                            Send(s, SERVER_COMMAND_1, SERVER_TOPIC, topic);
-                            msleep(3000);
-                        }
-                        else if (pb->botNum == 0) {
-                            Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker, BASE_TOPIC, BASE_COLON, topic);
-                            msleep(3000);
-                        }
-                    }
-                    else {
-                        if (pb->hasop == 1) {
-                            memset(topic, '\0', sizeof(topic));
-                            strcpy(topic, ptrDat);
-                            Send(s, SERVER_COMMAND_1, SERVER_TOPIC, topic);
-                            msleep(3000);
-                        }
-                        else if (pb->botNum == 0) {
-                            memset(topic, '\0', sizeof(topic));
-                            strcpy(topic, ptrDat);
-                            save_cfg(pb);
-                            Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker, BASE_TOPIC, BASE_ISNOW, topic);
-                            msleep(3000);
-                        }
-                    } return;
-                }
-                else if (!strcasecmp(BASE_BACKUP, com) && pb->botNum == 0) {
-                    if (ptrDat == NULL) {
-                        Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker, BASE_BACKUP, BASE_COLON, backup);
+                        Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker,
+                             BASE_BACKUP, BASE_COLON, backup);
                         msleep(3000);
-                    }
-                    else {
-                        memset(backup, '\0', sizeof(backup));
-                        strcpy(backup, ptrDat);
+                    } else {
+                        memset(backup, 0, sizeof(backup));
+                        strncpy(backup, ptrDat, sizeof(backup) - 1);
                         save_cfg(pb);
-                        Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker, BASE_BACKUP, BASE_ISNOW, backup);
-                        msleep(3000);
-                    } return;
-                }
-                else if (!strcasecmp(BASE_SERVER, com) && pb->botNum == 0) {
-                    if (ptrDat == NULL) {
-                        Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker, BASE_SERVER, BASE_COLON, pb->server);
-                        msleep(3000);
-                    } return;
-                }
-                else if (!strcasecmp(BASE_THREADS, com) && pb->botNum == 0) {
-                    if (ptrDat == NULL) {
-                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker, BASE_THREADS, BASE_COLON, pb->threads);
+                        Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker,
+                             BASE_BACKUP, BASE_ISNOW, backup);
                         msleep(3000);
                     }
-                    else {
+                }
+                return;
+            }
+
+            case CMD_BASE_SERVER:
+            {
+                if (pb->botNum == 0) {
+                    if (ptrDat == NULL) {
+                        Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker,
+                             BASE_SERVER, BASE_COLON, pb->server);
+                        msleep(3000);
+                    }
+                }
+                return;
+            }
+
+            case CMD_BASE_THREADS:
+            {
+                if (pb->botNum == 0) {
+                    if (ptrDat == NULL) {
+                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
+                             BASE_THREADS, BASE_COLON, pb->threads);
+                        msleep(3000);
+                    } else {
                         threads = atoi(ptrDat);
                         save_cfg(pb);
-                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker, BASE_THREADS, BASE_ISNOW, pb->threads);
-                        msleep(3000);
-                    } return;
-                }
-                else if (!strcasecmp(BASE_PORT, com) && pb->botNum == 0) { /* arent you forgetting to update pb->port at the save? lol */
-                    if (ptrDat == NULL) {
-                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker, BASE_PORT, BASE_COLON, pb->port);
+                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
+                             BASE_THREADS, BASE_ISNOW, pb->threads);
                         msleep(3000);
                     }
-                    else {
-                        port = atoi(ptrDat); // <----- pb->port
+                }
+                return;
+            }
+
+            case CMD_BASE_PORT:
+            {
+                // Original note: "arent you forgetting to update pb->port at the save? lol"
+                if (pb->botNum == 0) {
+                    if (ptrDat == NULL) {
+                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
+                             BASE_PORT, BASE_COLON, pb->port);
+                        msleep(3000);
+                    } else {
+                        // Update both global and pb->port if that is your intention
+                        port = atoi(ptrDat);
+                        pb->port = port;  // so it stays in sync
                         save_cfg(pb);
-                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker, BASE_PORT, BASE_ISNOW, port);
-                        msleep(3000);
-                    } return;
-                }
-                else if (!strcasecmp(BASE_DELAY, com) && pb->botNum == 0) {
-                    if (ptrDat == NULL) {
-                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker, BASE_DELAY, BASE_COLON, delay);
+                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
+                             BASE_PORT, BASE_ISNOW, port);
                         msleep(3000);
                     }
-                    else {
+                }
+                return;
+            }
+
+            case CMD_BASE_DELAY:
+            {
+                if (pb->botNum == 0) {
+                    if (ptrDat == NULL) {
+                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
+                             BASE_DELAY, BASE_COLON, delay);
+                        msleep(3000);
+                    } else {
                         delay = atoi(ptrDat);
                         save_cfg(pb);
-                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker, BASE_DELAY, BASE_ISNOW, delay);
-                        msleep(3000);
-                    } return;
-                }
-                else if (!strcasecmp(BASE_DELAY_2, com)) {
-                    if (ptrDat == NULL) {
-                        Send(s, ON_COMMAND_REPLY_1, SERVER_WHISPER, szSpeaker, BASE_DELAY, BASE_SCATTER, pb->delay2);
-                        msleep(3000);
-                    } return;
-                }
-                else if (!strcasecmp(BASE_SCATTER, com) && pb->botNum == 0) {
-                    if (ptrDat == NULL) {
-                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker, BASE_SCATTER, BASE_COLON, scatter);
+                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
+                             BASE_DELAY, BASE_ISNOW, delay);
                         msleep(3000);
                     }
-                    else {
+                }
+                return;
+            }
+
+            case CMD_BASE_DELAY_2:
+            {
+                if (ptrDat == NULL) {
+                    Send(s, ON_COMMAND_REPLY_1, SERVER_WHISPER, szSpeaker,
+                         BASE_DELAY, BASE_SCATTER, pb->delay2);
+                    msleep(3000);
+                }
+                return;
+            }
+
+            case CMD_BASE_SCATTER:
+            {
+                if (pb->botNum == 0) {
+                    if (ptrDat == NULL) {
+                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
+                             BASE_SCATTER, BASE_COLON, scatter);
+                        msleep(3000);
+                    } else {
                         scatter = atoi(ptrDat);
                         save_cfg(pb);
-                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker, BASE_SCATTER, BASE_ISNOW, scatter);
-                        msleep(3000);
-                    } return;
-                }
-                else if (!strcasecmp(BASE_BANWAIT, com) && pb->botNum == 0) {
-                    if (ptrDat == NULL) {
-                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker, BASE_BANWAIT, BASE_COLON, banWait);
+                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
+                             BASE_SCATTER, BASE_ISNOW, scatter);
                         msleep(3000);
                     }
-                    else {
+                }
+                return;
+            }
+
+            case CMD_BASE_BANWAIT:
+            {
+                if (pb->botNum == 0) {
+                    if (ptrDat == NULL) {
+                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
+                             BASE_BANWAIT, BASE_COLON, banWait);
+                        msleep(3000);
+                    } else {
                         banWait = atoi(ptrDat) * 1000;
                         save_cfg(pb);
-                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker, BASE_BANWAIT, BASE_ISNOW, (banWait / 1000));
-                        msleep(3000);
-                    } return;
-                }
-                else if (!strcasecmp(BASE_CONWAIT, com) && pb->botNum == 0) {
-                    if (ptrDat == NULL) {
-                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker, BASE_CONWAIT, BASE_COLON, conWait);
+                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
+                             BASE_BANWAIT, BASE_ISNOW, (banWait / 1000));
                         msleep(3000);
                     }
-                    else {
+                }
+                return;
+            }
+
+            case CMD_BASE_CONWAIT:
+            {
+                if (pb->botNum == 0) {
+                    if (ptrDat == NULL) {
+                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
+                             BASE_CONWAIT, BASE_COLON, conWait);
+                        msleep(3000);
+                    } else {
                         conWait = atoi(ptrDat);
                         save_cfg(pb);
-                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker, BASE_CONWAIT, BASE_ISNOW, conWait);
+                        Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
+                             BASE_CONWAIT, BASE_ISNOW, conWait);
                         msleep(3000);
-                    } return;
+                    }
                 }
-                else if (!strcasecmp(BASE_SAY, com) && ptrDat != NULL) {
+                return;
+            }
+
+            case CMD_BASE_SAY:
+            {
+                if (ptrDat != NULL) {
                     Send(s, ON_COMMAND_REPLY_2, ptrDat);
                     msleep(3000);
-                    return;
                 }
-                else if (!strcasecmp(BASE_VER, com) && pb->botNum == 0) {
+                return;
+            }
+
+            case CMD_BASE_VER:
+            {
+                if (pb->botNum == 0) {
                     Send(s, SERVER_COMMAND_2, SERVER_WHISPER, szSpeaker, FUK_VERSION);
                     msleep(3000);
-                    return;
                 }
-                else if (!strcasecmp(BASE_QUIT, com)) {
-                    exit(0);
-                }
-                else if (!strcasecmp(BASE_RECON, com)) {
-                    close(s);
-                    return;
-                }
-                else if (!strcasecmp(BASE_PLACE, com)) {
-                    Send(s, "/%s %s %d to login to %s with actual delay of %d.\r\n", SERVER_WHISPER, szSpeaker, pb->place, pb->server, pb->delay2);
+                return;
+            }
+
+            case CMD_BASE_QUIT:
+            {
+                exit(0);
+                return;  // unreachable, but keep for clarity
+            }
+
+            case CMD_BASE_RECON:
+            {
+                close(s);
+                return;
+            }
+
+            case CMD_BASE_PLACE:
+            {
+                // Original code snippet
+                Send(s, "/%s %s %d to login to %s with actual delay of %d.\r\n",
+                     SERVER_WHISPER, szSpeaker, pb->place, pb->server, pb->delay2);
+                msleep(3000);
+                return;
+            }
+
+            case CMD_BASE_PING:
+            {
+                // Only if pb->botNum == 0
+                if (pb->botNum == 0) {
+                    char pingStr[250];
+                    snprintf(pingStr, sizeof(pingStr), "%s -c1 %s", BASE_PING, pb->server);
+
+                    FILE* fp1 = popen(pingStr, "r");
+                    if (fp1) {
+                        char pi[512];
+                        // read two lines
+                        if (fgets(pi, sizeof(pi), fp1) != NULL) {
+                            // do something with pi
+                        }
+                        if (fgets(pi, sizeof(pi), fp1) != NULL) {
+                            Send(s, SERVER_BASE_SPEAK, pi);
+                        }
+                        pclose(fp1);
+                    }
                     msleep(3000);
-                    return;
                 }
-                else if (!strcasecmp(BASE_PING, com) && pb->botNum == 0) {
-                    memset(pingStr, '\0', sizeof(pingStr));
-                    sprintf(pingStr, "%s -c1 %s", BASE_PING, pb->server);
-                    fp1 = popen(pingStr, "r");
-                    fgets(pi, 512, fp1);
-                    fgets(pi, 512, fp1);
-                    Send(s, SERVER_BASE_SPEAK, pi);
-                    pclose(fp1); /* if your going to use popen, use pclose */
-                    msleep(3000);
-                    return;
-                }
-                else if (!strcasecmp(com, SERVER_BAN) && ptrDat != NULL && pb->hasop == 1) {
+                return;
+            }
+
+            case CMD_SERVER_BAN:
+            {
+                if (ptrDat != NULL && pb->hasop == 1) {
                     Send(s, SERVER_COMMAND_1, SERVER_BAN, ptrDat);
                     msleep(3000);
-                    return;
                 }
-                else if (!strcasecmp(com, SERVER_UNBAN) && ptrDat != NULL && pb->hasop == 1) {
+                return;
+            }
+
+            case CMD_SERVER_UNBAN:
+            {
+                if (ptrDat != NULL && pb->hasop == 1) {
                     pb->lockdown = 0;
                     Send(s, SERVER_COMMAND_1, SERVER_UNBAN, ptrDat);
                     msleep(3000);
-                    return;
                 }
-                else if (!strcasecmp(com, SERVER_KICK) && ptrDat != NULL && pb->hasop == 1) {
+                return;
+            }
+
+            case CMD_SERVER_KICK:
+            {
+                if (ptrDat != NULL && pb->hasop == 1) {
                     Send(s, SERVER_COMMAND_1, SERVER_KICK, ptrDat);
                     msleep(3000);
-                    return;
                 }
-                else if (!strcasecmp(com, SERVER_JOIN) && ptrDat != NULL) {
+                return;
+            }
+
+            case CMD_SERVER_JOIN:
+            {
+                if (ptrDat != NULL) {
                     Send(s, SERVER_COMMAND_1, SERVER_JOIN, ptrDat);
                     msleep(3000);
-                    return;
                 }
-                else if (!strcasecmp(com, SERVER_REJOIN)) {
-                    Send(s, SERVER_COMMAND_0, SERVER_REJOIN);
-                    msleep(3000);
-                    return;
-                }
-                else if (!strcasecmp(com, BASE_DES) && pb->hasop == 1) {
+                return;
+            }
+
+            case CMD_SERVER_REJOIN:
+            {
+                Send(s, SERVER_COMMAND_0, SERVER_REJOIN);
+                msleep(3000);
+                return;
+            }
+
+            case CMD_BASE_DES:
+            {
+                if (pb->hasop == 1) {
                     pb->op = 0;
                     if (ptrDat != NULL) {
                         Send(s, SERVER_COMMAND_1, SERVER_DESIGNATE, ptrDat);
                     } else {
                         Send(s, SERVER_COMMAND_1, SERVER_DESIGNATE, szSpeaker);
-                    } 
-                    msleep(3000); 
-                    return;
+                    }
+                    msleep(3000);
                 }
-                else if (!strcasecmp(com, SERVER_RESIGN) && pb->hasop == 1) {
+                return;
+            }
+
+            case CMD_SERVER_RESIGN:
+            {
+                if (pb->hasop == 1) {
                     if (pb->des != 0) {
                         pb->des = 0;
                         Send(s, SERVER_COMMAND_0, SERVER_RESIGN);
                         msleep(3000);
-                    }
-                    else {
+                    } else {
                         Send(s, ON_COMMAND_REPLY_2, BASE_NO_HEIR_TEXT);
                         msleep(3000);
-                    } return;
+                    }
                 }
-                else if (!strcasecmp(com, SERVER_UPTIME) && pb->botNum == 0) {
+                return;
+            }
+
+            case CMD_SERVER_UPTIME:
+            {
+                if (pb->botNum == 0) {
                     Send(s, SERVER_COMMAND_0, SERVER_UPTIME);
                     msleep(3000);
-                    return;
                 }
-                else if (!strcasecmp(com, BASE_OP) && pb->hasop == 1) { /* confused by the second designate command here */
+                return;
+            }
+
+            case CMD_BASE_OP:
+            {
+                if (pb->hasop == 1) {
                     pb->op = 1;
                     if (ptrDat != NULL) {
                         Send(s, SERVER_COMMAND_1, SERVER_DESIGNATE, ptrDat);
                     } else {
                         Send(s, SERVER_COMMAND_1, SERVER_DESIGNATE, szSpeaker);
-                    } 
-                    msleep(3000); 
-                    return;
+                    }
+                    msleep(3000);
                 }
-                else if (!strcasecmp(com, BASE_LOCK) && pb->hasop == 1) { //BASE_CHANLOCKED
+                return;
+            }
+
+            case CMD_BASE_LOCK:
+            {
+                if (pb->hasop == 1) {
                     pb->lockdown = 1;
                     Send(s, SERVER_COMMAND_2, SERVER_TOPIC, topic, BASE_CHANLOCKED);
                     msleep(3000);
                     Send(s, SERVER_COMMAND_1, SERVER_WHO, pb->currChan);
                     msleep(3000);
-                    return;
                 }
-                else if (!strcasecmp(com, BASE_UNLOCK)) {
-                    pb->lockdown = 0;
-                    if (pb->hasop == 1) {
-                        Send(s, SERVER_COMMAND_1, SERVER_TOPIC, topic);
-                        msleep(3000);
-                    } return;
+                return;
+            }
+
+            case CMD_BASE_UNLOCK:
+            {
+                pb->lockdown = 0;
+                if (pb->hasop == 1) {
+                    Send(s, SERVER_COMMAND_1, SERVER_TOPIC, topic);
+                    msleep(3000);
                 }
-                else if (!strcasecmp(com, BASE_CLEAN) && pb->hasop == 1) {
+                return;
+            }
+
+            case CMD_BASE_CLEAN:
+            {
+                if (pb->hasop == 1) {
                     Send(s, SERVER_COMMAND_1, SERVER_WHO, pb->currChan);
                     msleep(3000);
-                    return;
                 }
-                else if (!strcasecmp(com, BASE_TAG) && pb->hasop == 1) {
+                return;
+            }
+
+            case CMD_BASE_TAG:
+            {
+                if (pb->hasop == 1) {
                     if (ptrDat != NULL) {
                         pb->tban = 1;
-                        memset(tag, '\0', sizeof(tag));
+                        memset(tag, 0, sizeof(tag));
                         strcpy(tag, ptrDat);
                         Send(s, SERVER_COMMAND_1, SERVER_WHO, pb->currChan);
                         msleep(3000);
-                    }
-                    else {
+                    } else {
                         pb->tban = 0;
                         Send(s, ON_COMMAND_REPLY_2, BASE_TAGBAN_DISABLED);
                         msleep(3000);
-                    } return;
+                    }
                 }
-                else if (!strcasecmp(com, BASE_CONTIME) && pb->botNum == 0) {
+                return;
+            }
+
+            case CMD_BASE_CONTIME:
+            {
+                if (pb->botNum == 0) {
                     Send(s, ON_COMMAND_REPLY_3, SERVER_WHISPER, szSpeaker, pb->conTime);
                     msleep(3000);
-                    return;
                 }
-                else if (!strcasecmp(com, BASE_MEM) && pb->botNum == 0) {
+                return;
+            }
+
+            case CMD_BASE_MEM:
+            {
+                if (pb->botNum == 0) {
+                    struct rusage r_usage;
                     getrusage(RUSAGE_SELF, &r_usage);
+                    // r_usage.ru_maxrss is often in KB on Linux, but usage may vary by system
                     Send(s, ON_COMMAND_REPLY_4, SERVER_WHISPER, szSpeaker, r_usage.ru_maxrss);
                     msleep(3000);
-                    return;
                 }
-                else
-                    return;
+                return;
             }
-        }
-    }
+
+            case CMD_UNKNOWN:
+            default:
+                // No recognized command - do nothing or handle an error
+                return;
+        } // end switch
+    } // end if (starts with trigger)
 }
 
 void OnChannel(int s, struct data* pb, char* szEventText) {
