@@ -90,12 +90,14 @@ int try_connect(struct data* pb, struct timeval tv) {
     return -1;
 }
 
-void processList(int s, char* com, char* name, char* list, void* array, int* size, const char* type) {
+// Change the 'array' parameter to be a pointer-to-pointer so that we can update it.
+void processList(int s, char* com, char* name, char* list, masterList **pArray, int *pSize, const char* type) {
     int x, once = 1, replace = 0;
-    masterList* listArray = (masterList*)array; // Cast to correct type
+    // Get the current pointer from the caller.
+    masterList *listArray = *pArray;
 
-    for (x = 0; x < *size; x++) {
-        replace = 0;
+    // Loop through the current list for REMOVAL or LIST operations.
+    for (x = 0; x < *pSize; x++) {
         if (!strcasecmp(CFGSTUFF_LIST, com)) {
             Send(s, CFGSTUFF_FORMATTING_X_EQUILS_X, type, listArray[x].id);
             msleep(3000);
@@ -105,18 +107,20 @@ void processList(int s, char* com, char* name, char* list, void* array, int* siz
                 replace = 1;
             }
             if (replace) {
-                if (x < *size - 1) {
-                    // Shift items **before** resizing memory
-                    memmove(&listArray[x], &listArray[x + 1], (*size - x - 1) * sizeof(masterList));
+                // Shift items left (if not deleting the last element)
+                if (x < *pSize - 1) {
+                    memmove(&listArray[x], &listArray[x + 1],
+                            ((*pSize) - x - 1) * sizeof(masterList));
                 }
 
-                // Allocate new memory **after shifting**
-                masterList* temp = (masterList*)reallocarray(listArray, (*size - 1), sizeof(masterList));
+                // Decrease the allocated size by 1.
+                masterList *temp = reallocarray(listArray, *pSize - 1, sizeof(masterList));
                 if (temp) {
-                    listArray = temp;  // Update pointer only if realloc succeeds
-                    (*size)--;         // Now it's safe to decrement the size
+                    listArray = temp;  // Only update if realloc succeeded.
+                    (*pSize)--;
                 } else {
-                    perror("reallocarray failed");  // Log error but keep old list intact
+                    perror("reallocarray failed while removing an entry");
+                    // If realloc fails, we continue using the original list.
                 }
 
                 if (once) {
@@ -124,57 +128,67 @@ void processList(int s, char* com, char* name, char* list, void* array, int* siz
                     once = 0;
                     msleep(3000);
                 }
+                // We break here if we removed the entry.
+                break;
             }
         }
         else if (!strcasecmp(CFGSTUFF_ADD, com) && name != NULL) {
+            // If the entry already exists, notify and return.
             if (!strcasecmp(listArray[x].id, name)) {
                 Send(s, CFGSTUFF_FORMATTING_ADD_SECTION, name, type);
                 return;
             }
         }
     }
-    // Handle adding a new entry safely
-    if (!strcasecmp(CFGSTUFF_ADD, com) && name != NULL) {
-        masterList* temp = reallocarray(listArray, (*size - 1), sizeof(masterList));
-        if (temp) {
-            listArray = temp;  // Update pointer only if realloc succeeds
-            (*size)++;         // Increment size after successful allocation
 
-            int ps = *size - 1;
+    // Handle adding a new entry.
+    if (!strcasecmp(CFGSTUFF_ADD, com) && name != NULL) {
+        // Reallocate to one extra element (new size: current size + 1)
+        masterList *temp = reallocarray(listArray, *pSize + 1, sizeof(masterList));
+        if (temp) {
+            listArray = temp;  // Only update pointer if allocation succeeds.
+            int ps = *pSize;   // New element goes at the current end index.
             memset(listArray[ps].id, 0, sizeof(listArray[ps].id));
             strncpy(listArray[ps].id, name, sizeof(listArray[ps].id) - 1);
-
+            (*pSize)++;        // Increment the size.
             Send(s, CFGSTUFF_FORMATTING_TO_FROM_SECTION, com, name, CFGSTUFF_TO, list);
             msleep(3000);
         } else {
-            perror("reallocarray failed to add entry");  // Log error
+            perror("reallocarray failed to add entry");
         }
     }
+
+    // Update the caller’s pointer with the (possibly new) allocation.
+    *pArray = listArray;
 }
 
 void cfgStuff(int s, struct data* pb, char* com, char* text) {
     char* pos;
     char textBuffer[FUK_CFG_MAXCOUNT];
+    
+    // Ensure safe copying of `text`
     strncpy(textBuffer, text, sizeof(textBuffer) - 1);
     textBuffer[sizeof(textBuffer) - 1] = '\0';
 
+    // Tokenize to extract `list` and `name`
     char* list = strtok_r(textBuffer, " ", &pos);
     if (!list) return;  // Ensure valid pointer
     
     char* name = strtok_r(NULL, " ", &pos);
     if (!name) return;  // Ensure valid pointer
 
+    // Process the correct list type
     if (strstr(list, CFGSTUFF_MASTER)) {
-        processList(s, com, name, list, (void*)master, &masterSz, CFGSTUFF_MASTER);
+        processList(s, com, name, list, (masterList**)&master, &masterSz, CFGSTUFF_MASTER);
     }
     else if (strstr(list, CFGSTUFF_SAFE)) {
-        processList(s, com, name, list, (void*)safe, &safeSz, CFGSTUFF_SAFE);
+        processList(s, com, name, list, (safeList**)&safe, &safeSz, CFGSTUFF_SAFE);
     }
     else if (strstr(list, CFGSTUFF_SHIT)) {
-        processList(s, com, name, list, (void*)shit, &shitSz, CFGSTUFF_SHIT);
+        processList(s, com, name, list, (shitList**)&shit, &shitSz, CFGSTUFF_SHIT);
     }
     else if (strstr(list, CFGSTUFF_DES)) {
-        processList(s, com, name, list, (void*)des, &desSz, CFGSTUFF_DES);
+        processList(s, com, name, list, (desList**)&des, &desSz, CFGSTUFF_DES);
     }
 }
 
