@@ -62,12 +62,6 @@ void allocate_lists() {
         perror("Memory allocation failed for lists");
         exit(EXIT_FAILURE);
     }
-
-    pb = (struct data*)calloc(numBots, sizeof(struct data));
-    if (!pb) {
-        perror("Memory allocation failed for pb");
-        exit(EXIT_FAILURE);
-    }
 }
 
 void free_config() {
@@ -1429,6 +1423,12 @@ int main() {
         return EXIT_SUCCESS;  // Parent process exits cleanly
     }
 
+    pb = (struct data*)calloc(numBots, sizeof(struct data));
+    if (!pb) {
+        perror("Memory allocation failed for pb");
+        exit(EXIT_FAILURE);
+    }
+    
     allocate_lists();
     
     if (read_config() != 0) {
