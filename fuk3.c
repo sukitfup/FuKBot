@@ -43,6 +43,7 @@ void set_nonblock(int s) {
 }
 
 void allocate_lists() {
+    // Ensure minimum allocation of 1 element
     masterSz = masterSz > 0 ? masterSz : 1;
     safeSz = safeSz > 0 ? safeSz : 1;
     shitSz = shitSz > 0 ? shitSz : 1;
@@ -97,10 +98,10 @@ int try_connect(struct data* pb, struct timeval tv) {
 }
 
 void processList(int s, char* com, char* name, char* list, void **pArray, int *pSize, const char* type) {
-    masterList *listArray = (masterList *)(*pArray);  // Cast back to `masterList *`
+    masterList *listArray = (masterList *)(*pArray);
     int x, once = 1, replace = 0;
 
-    // Loop through the current list for REMOVAL or LIST operations.
+    // Check if command is LIST
     for (x = 0; x < *pSize; x++) {
         if (!strcasecmp(CFGSTUFF_LIST, com)) {
             Send(s, CFGSTUFF_FORMATTING_X_EQUILS_X, type, listArray[x].id);
@@ -111,32 +112,20 @@ void processList(int s, char* com, char* name, char* list, void **pArray, int *p
                 replace = 1;
             }
             if (replace) {
-                // Shift items left (if not deleting the last element)
                 if (x < *pSize - 1) {
-                    memmove(&listArray[x], &listArray[x + 1],
-                            ((*pSize) - x - 1) * sizeof(masterList));
+                    memmove(&listArray[x], &listArray[x + 1], ((*pSize) - x - 1) * sizeof(masterList));
                 }
-
-                // If reallocation is needed
-                masterList *temp = realloc(listArray, (*pSize + 1) * sizeof(masterList));
-                if (temp) {
-                    *pArray = temp; // Update the pointer safely
-                    (*pSize)++;
+                masterList *temp = realloc(listArray, (*pSize - 1) * sizeof(masterList));
+                if (temp || *pSize == 1) {  // realloc can return NULL for size 0
+                    *pArray = temp;
+                    (*pSize)--;
                 } else {
-                    perror("realloc failed");
+                    perror("realloc failed in processList");
                 }
-
-                if (once) {
-                    Send(s, CFGSTUFF_FORMATTING_TO_FROM_SECTION, com, name, CFGSTUFF_FROM, list);
-                    once = 0;
-                    msleep(3000);
-                }
-                // We break here if we removed the entry.
                 break;
             }
         }
         else if (!strcasecmp(CFGSTUFF_ADD, com) && name != NULL) {
-            // If the entry already exists, notify and return.
             if (!strcasecmp(listArray[x].id, name)) {
                 Send(s, CFGSTUFF_FORMATTING_ADD_SECTION, name, type);
                 return;
@@ -144,24 +133,22 @@ void processList(int s, char* com, char* name, char* list, void **pArray, int *p
         }
     }
 
-    // Handle adding a new entry.
+    // Handle adding a new entry
     if (!strcasecmp(CFGSTUFF_ADD, com) && name != NULL) {
-        // Reallocate to one extra element (new size: current size + 1)
-        masterList *temp = reallocarray(listArray, *pSize + 1, sizeof(masterList));
+        masterList *temp = realloc(listArray, (*pSize + 1) * sizeof(masterList));
         if (temp) {
-            listArray = temp;  // Only update pointer if allocation succeeds.
-            int ps = *pSize;   // New element goes at the current end index.
+            listArray = temp;
+            size_t ps = *pSize;
             memset(listArray[ps].id, 0, sizeof(listArray[ps].id));
             strncpy(listArray[ps].id, name, sizeof(listArray[ps].id) - 1);
-            (*pSize)++;        // Increment the size.
+            (*pSize)++;
             Send(s, CFGSTUFF_FORMATTING_TO_FROM_SECTION, com, name, CFGSTUFF_TO, list);
             msleep(3000);
         } else {
-            perror("reallocarray failed to add entry");
+            perror("realloc failed to add entry");
         }
     }
 
-    // Update the caller’s pointer with the (possibly new) allocation.
     *pArray = listArray;
 }
 
@@ -1376,14 +1363,14 @@ void create_threads(struct data* pb) {
             return;
         }
 
-        // Safe strncpy with explicit length check
+        // Ensure `username` is correctly bounded
         size_t len = strnlen(replaced, MAX_USERNAME_LEN - 1);
         strncpy(pb->username, replaced, len);
         pb->username[len] = '\0';
 
-        free(replaced);
+        free(replaced); // Free dynamically allocated memory
 
-        // Ensure other fields are safe
+        // Copy other fields safely
         strncpy(pb->password, password, MAX_PASSWORD_LEN - 1);
         pb->password[MAX_PASSWORD_LEN - 1] = '\0';
 
@@ -1400,9 +1387,11 @@ void create_threads(struct data* pb) {
         pb->port = port;
         pb->threads = threads;
 
-        snprintf(pb->logonPacket, MAX_LOGON_PACKET_LEN,
+        // Ensure `logonPacket` stays within `MAX_LOGON_PACKET_LEN`
+        snprintf(pb->logonPacket, MAX_LOGON_PACKET_LEN - 1,
                  "C1\r\nACCT %s\r\nPASS %s\r\nHOME %s\r\nLOGIN\r\n",
                  pb->username, pb->password, pb->channel);
+        pb->logonPacket[MAX_LOGON_PACKET_LEN - 1] = '\0';
     }
 
     // Start threads safely
@@ -1417,7 +1406,7 @@ void create_threads(struct data* pb) {
         pthread_join(thread[t], NULL);
     }
 
-    free(thread);  // Free allocated memory
+    free(thread);  // Free allocated thread memory
 }
 
 int main() {
