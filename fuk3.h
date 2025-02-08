@@ -427,7 +427,7 @@ void set_nonblock(int fd);
 void free_config();
 void clean_exit(int status);
 void setup_signal_handlers();
-void processList(int s, char* com, char* name, char* list, void* array, int* size, const char* type);
+void processList(int s, char* com, char* name, char* list, masterList **pArray, int *pSize, const char* type);
 int try_connect(struct data* pb, struct timeval tv);
 CommandID resolve_command(const char* com);
 #endif
