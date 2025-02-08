@@ -1355,18 +1355,20 @@ void create_threads(struct data* pb) {
         return;
     }
     struct data *p = pb;
-    for (int t = 0; t < numBots; t++, pb_ptr++)
+    for (int t = 0; t < numBots; t++, pb++) {
         char *replaced = replace_str(username, "#", t);
-        if (!replaced) {
-            perror("Memory allocation failed in replace_str");
-            free(thread);
-            return;
+        if (replaced && strlen(replaced) >= MAX_USERNAME_LEN) {
+            fprintf(stderr, "ERROR: replaced username is too long!\n");
+            free(replaced);
+            exit(EXIT_FAILURE);
         }
 
-        // Ensure `username` is correctly bounded
-        size_t len = strnlen(replaced, MAX_USERNAME_LEN - 1);
-        strncpy(pb->username, replaced, len);
-        pb->username[len] = '\0';
+        if (strlen(replaced) >= MAX_USERNAME_LEN) {
+            fprintf(stderr, "ERROR: username too long!\n");
+            exit(EXIT_FAILURE);
+        }
+        strncpy(pb->username, replaced, MAX_USERNAME_LEN - 1);
+        pb->username[MAX_USERNAME_LEN - 1] = '\0';
 
         free(replaced); // Free dynamically allocated memory
 
