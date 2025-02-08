@@ -20,6 +20,17 @@ void clean_exit(int status) {
     exit(status);
 }
 
+int try_connect(struct data* pb, struct timeval tv) {
+    int s;
+    while (!atomic_load(&pb->connected)) {
+        s = socket(AF_INET, SOCK_STREAM, 0);
+        if (Connect(s, tv, pb) == 0)
+            return s;  // Successful connection
+        close(s);
+    }
+    return -1;
+}
+
 void cfgStuff(int s, struct data* pb, char* com, char* text) {
     int x;
     int once = 1;
@@ -1063,43 +1074,32 @@ int Connect(int s, struct timeval tv, struct data* pb) {
 }
 
 void* thread_conn(void* arg) {
-	struct data* pb = (struct data*)arg;
-	struct timeval tv;
-	int s, off = 0;
-	tv.tv_sec = 0;
-	startTime = time(NULL);
-	if (scatter > 0) {
-	    pb->delay2 = rand() % scatter + delay;
-	}
-	else {
-	    pb->delay2 = delay;
-	}
-	tv.tv_usec = pb->delay2 * 1000;
-	//Recon Loop
-	while (__sync_bool_compare_and_swap(&pb->connected, 0, 0)) {
-	    s = socket(AF_INET, SOCK_STREAM, 0);
-	    int con = Connect(s, tv, pb);
-	    if (con == 0)
-		break;
-	    else
-		close(s);
-	}
-	//Not first so close socket and kill thread.
-	if (!__sync_bool_compare_and_swap(&pb->connected, 0, 1)) {
-	    //printf("%s Not first :( Closing socket %d\n", pb->username, s);
-	    close(s);
-	    pthread_exit(NULL);
-	}
-	//First thread to connect. Do stuff.
-	Send(s, pb->logonPacket, sizeof(pb->logonPacket), 0);
-	pb->conTime = time(NULL) - startTime;
-	//printf("%s first to connect! On socket %d\n", pb->username, s);
-	message_loop(s, pb);
-	//Disconnected. Wrap it up.
-	//printf("Disconnected... Closing socket %d\n", s);
-	close(s);
-	__sync_bool_compare_and_swap(&pb->connected, 1, 0);
-	pthread_exit(NULL);
+    struct data* pb = (struct data*)arg;
+    struct timeval tv = { .tv_sec = 0 };
+
+    startTime = time(NULL);
+    pb->delay2 = (scatter > 0) ? (rand() % scatter + delay) : delay;
+    tv.tv_usec = pb->delay2 * 1000;
+
+    int s = try_connect(pb, tv);
+    if (s == -1) pthread_exit(NULL);
+
+    // Ensure only one thread establishes the connection
+    if (!atomic_compare_exchange_strong(&pb->connected, &(int){0}, 1)) {
+        close(s);
+        pthread_exit(NULL);
+    }
+
+    // First successful thread does the work
+    Send(s, pb->logonPacket, sizeof(pb->logonPacket), 0);
+    pb->conTime = time(NULL) - startTime;
+    
+    message_loop(s, pb);
+    
+    // Cleanup after disconnection
+    close(s);
+    atomic_store(&pb->connected, 0);
+    pthread_exit(NULL);
 }
 
 void create_threads(struct data* pb) {
