@@ -402,7 +402,7 @@ void clean_exit(int status);
 void setup_signal_handlers();
 void processList(int s, char* com, char* name, char* list, void* array, int* size, const char* type);
 int try_connect(struct data* pb, struct timeval tv);
-static enum CommandID resolve_command(const char* com)
+static enum CommandID resolve_command(const char* com);
 #endif
 void cfgStuff(int s, struct data* pb, char* com, char* text);
 void OnJoin(int s, struct data* pb, char* szSpeaker);
