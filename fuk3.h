@@ -356,7 +356,7 @@ struct data *pb;
 
 #if !defined(WINDOWS_CPP_BUILD)
 
-typedef enum {
+typedef enum _CommandID {
     CMD_UNKNOWN,
     CMD_CFGSTUFF_LIST,
     CMD_CFGSTUFF_ADD,
