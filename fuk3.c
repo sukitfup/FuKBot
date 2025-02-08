@@ -1,11 +1,11 @@
 #include "fuk3.h"
 
-void msleep(unsigned long milliseconds) {
-    struct timespec ts;
-    ts.tv_sec = milliseconds / 1000;
-    ts.tv_nsec = (milliseconds % 1000) * 1000000;
-    nanosleep(&ts, NULL);
-}
+// void msleep(unsigned long milliseconds) {
+//     struct timespec ts;
+//     ts.tv_sec = milliseconds / 1000;
+//     ts.tv_nsec = (milliseconds % 1000) * 1000000;
+//     nanosleep(&ts, NULL);
+// }
 
 void set_nonblock(int fd) {
 	int old_option = fcntl(fd, F_GETFL);
