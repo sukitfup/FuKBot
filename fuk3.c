@@ -1342,35 +1342,35 @@ void* thread_conn(void* arg) {
     pthread_exit(NULL);
 }
 
-void create_threads(struct data* pb) {
+void create_threads(struct data *pb) {
     int err;
     int numThreads = numBots * threads;
 
+    // Allocate thread array on the heap to avoid stack overflow
     pthread_t *thread = malloc(numThreads * sizeof(pthread_t));
     if (!thread) {
         perror("malloc failed for thread array");
         return;
     }
 
+    // Initialize each bot
     for (int t = 0; t < numBots; t++) {
         struct data *bot = &pb[t];
 
         char *replaced = replace_str(username, "#", t);
         if (!replaced) {
             fprintf(stderr, "ERROR: replace_str() failed!\n");
-            continue;  // Skip this bot, avoid crashing
+            continue;
         }
 
         if (strlen(replaced) >= MAX_USERNAME_LEN) {
-            fprintf(stderr, "ERROR: username too long!\n");
-            free(replaced);
-            exit(EXIT_FAILURE);
+            fprintf(stderr, "ERROR: Username too long!\n");
+            continue;
         }
+
         strncpy(bot->username, replaced, MAX_USERNAME_LEN - 1);
         bot->username[MAX_USERNAME_LEN - 1] = '\0';
-        free(replaced);
 
-        // Initialize other fields safely
         snprintf(bot->password, MAX_PASSWORD_LEN, "%s", password);
         snprintf(bot->channel, MAX_CHANNEL_LEN, "%s", channel);
         snprintf(bot->server, MAX_SERVER_LEN, "%s", server);
@@ -1387,12 +1387,14 @@ void create_threads(struct data* pb) {
 
     // Start threads properly
     for (int t = 0; t < numThreads; t++) {
-        err = pthread_create(&thread[t], NULL, thread_conn, &pb[t % numBots]);
+        int botIndex = t % numBots;
+        err = pthread_create(&thread[t], NULL, thread_conn, &pb[botIndex]);
         if (err != 0) {
             fprintf(stderr, "pthread_create failed: %s\n", strerror(err));
         }
     }
 
+    // Join threads
     for (int t = 0; t < numThreads; t++) {
         pthread_join(thread[t], NULL);
     }
@@ -1403,10 +1405,10 @@ void create_threads(struct data* pb) {
 int main() {
     srand((unsigned)time(NULL));
     setup_signal_handlers();
-    printf("%s\n", FUK_VERSION);
+    printf("Bot Version: 3.0\n");
     printf("PID: %d\n", getpid());
 
-    pb = (struct data*)calloc(numBots, sizeof(struct data));
+    pb = (struct data *)calloc(numBots, sizeof(struct data));
     if (!pb) {
         perror("Memory allocation failed for pb");
         exit(EXIT_FAILURE);
@@ -1421,7 +1423,7 @@ int main() {
 
     if ((main_pid = fork()) == -1) {
         perror("shutting down: unable to fork");
-        return EXIT_FAILURE;
+        clean_exit(EXIT_FAILURE);
     }
 
     if (main_pid != 0) {
