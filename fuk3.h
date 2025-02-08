@@ -100,6 +100,7 @@
 	char* mystrsep(char** stringp, const char* delim);
 	#define strsep mystrsep
 #else
+	#include <stdatomic.h>
 	#include <stdio.h>
 	#include <sys/socket.h>
 	#include <netdb.h>
