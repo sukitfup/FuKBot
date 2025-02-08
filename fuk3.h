@@ -310,10 +310,20 @@
 	#define INVALID_SOCKET		-1
 #endif
 
-
+#define MAX_USERNAME_LEN 21
+#define MAX_PASSWORD_LEN 21
+#define MAX_SERVER_LEN 21
+#define MAX_BINDADDR_LEN 21
+#define MAX_CHANNEL_LEN 21
+#define MAX_TRIGGER_LEN 2
+#define MAX_BACKUP_LEN 21
+#define MAX_TOPIC_LEN 41
+#define MAX_TAG_LEN 11
+#define MAX_LOGON_PACKET_LEN 100
+#define MAX_LIST_LEN 21
 
 typedef struct {
-	char id[21];
+	char id[MAX_LIST_LEN];
 } masterList, safeList, shitList, desList;
 
 shitList* shit;
@@ -324,33 +334,35 @@ masterList* master;
 int main_pid, masterSz, safeSz, shitSz, desSz, threadSz;
 int port, threads, delay, scatter, numBots, banWait, conWait, randGreet, startTime;
 
-char username[21];
-char password[21];
-char server[21];
-char bindaddr[21];
-char channel[21];
-char trigger[2];
-char backup[21];
-char topic[41];
-char tag[11];
-
-struct rusage r_usage;
-
 struct data {
-	time_t lastTime;
-	unsigned int flood;
-	int conTime, tban, op, des, greet, botNum;
-	int port, place, threads, delay2, hasop, lockdown, chanham;
-	volatile int connected;
-	char password[21];
-	char username[21];
-	char server[21];
-	char bindaddr[21];
-	char channel[21];
-	char trigger[2];
-	char logonPacket[100];
-	char currChan[21];
+    time_t lastTime;
+    unsigned int flood;
+    int conTime, tban, op, des, greet, botNum;
+    int port, place, threads, delay2, hasop, lockdown, chanham;
+    volatile int connected;
+    
+    char password[MAX_PASSWORD_LEN];
+    char username[MAX_USERNAME_LEN];
+    char server[MAX_SERVER_LEN];
+    char bindaddr[MAX_BINDADDR_LEN];
+    char channel[MAX_CHANNEL_LEN];
+    char trigger[MAX_TRIGGER_LEN];
+    char logonPacket[MAX_LOGON_PACKET_LEN];
+    char currChan[MAX_CHANNEL_LEN];
 };
+
+struct rusage r_usage;  // Keep this unchanged
+
+// Declare global variables using the same length constraints
+char username[MAX_USERNAME_LEN];
+char password[MAX_PASSWORD_LEN];
+char server[MAX_SERVER_LEN];
+char bindaddr[MAX_BINDADDR_LEN];
+char channel[MAX_CHANNEL_LEN];
+char trigger[MAX_TRIGGER_LEN];
+char backup[MAX_BACKUP_LEN];
+char topic[MAX_TOPIC_LEN];
+char tag[MAX_TAG_LEN];
 
 struct data *pb;
 
