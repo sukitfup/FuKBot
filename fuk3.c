@@ -280,7 +280,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                 if (ptrDat != NULL && pb->botNum == 0) {
                     cfgStuff(s, pb, com, ptrDat);
                 }
-                return;
+                break;
 
             case CMD_CFGSTUFF_ADD:
             {
@@ -288,7 +288,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     cfgStuff(s, pb, com, ptrDat);
                     save_cfg(pb);
                 }
-                return;
+                break;
             }
 
             case CMD_CFGSTUFF_REM:
@@ -297,7 +297,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     cfgStuff(s, pb, com, ptrDat);
                     save_cfg(pb);
                 }
-                return;
+                break;
             }
 
             case CMD_BASE_TRIGGER:
@@ -327,7 +327,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                         strncpy(pb->trigger, ptrDat, sizeof(pb->trigger) - 1);
                     }
                 }
-                return;
+                break;
             }
 
             case CMD_BASE_HOME:
@@ -355,7 +355,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                         strncpy(pb->channel, ptrDat, sizeof(pb->channel) - 1);
                     }
                 }
-                return;
+                break;
             }
 
             case CMD_BASE_TOPIC:
@@ -384,7 +384,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                         msleep(3000);
                     }
                 }
-                return;
+                break;
             }
 
             case CMD_BASE_BACKUP:
@@ -403,7 +403,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                         msleep(3000);
                     }
                 }
-                return;
+                break;
             }
 
             case CMD_BASE_SERVER:
@@ -415,7 +415,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                         msleep(3000);
                     }
                 }
-                return;
+                break;
             }
 
             case CMD_BASE_THREADS:
@@ -433,7 +433,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                         msleep(3000);
                     }
                 }
-                return;
+                break;
             }
 
             case CMD_BASE_PORT:
@@ -454,7 +454,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                         msleep(3000);
                     }
                 }
-                return;
+                break;
             }
 
             case CMD_BASE_DELAY:
@@ -472,7 +472,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                         msleep(3000);
                     }
                 }
-                return;
+                break;
             }
 
             case CMD_BASE_DELAY_2:
@@ -482,7 +482,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                          BASE_DELAY, BASE_SCATTER, pb->delay2);
                     msleep(3000);
                 }
-                return;
+                break;
             }
 
             case CMD_BASE_SCATTER:
@@ -500,7 +500,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                         msleep(3000);
                     }
                 }
-                return;
+                break;
             }
 
             case CMD_BASE_BANWAIT:
@@ -518,7 +518,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                         msleep(3000);
                     }
                 }
-                return;
+                break;
             }
 
             case CMD_BASE_CONWAIT:
@@ -536,7 +536,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                         msleep(3000);
                     }
                 }
-                return;
+                break;
             }
 
             case CMD_BASE_SAY:
@@ -545,7 +545,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     Send(s, ON_COMMAND_REPLY_2, ptrDat);
                     msleep(3000);
                 }
-                return;
+                break;
             }
 
             case CMD_BASE_VER:
@@ -554,19 +554,19 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     Send(s, SERVER_COMMAND_2, SERVER_WHISPER, szSpeaker, FUK_VERSION);
                     msleep(3000);
                 }
-                return;
+                break;
             }
 
             case CMD_BASE_QUIT:
             {
                 exit(0);
-                return;  // unreachable, but keep for clarity
+                break;  // unreachable, but keep for clarity
             }
 
             case CMD_BASE_RECON:
             {
                 close(s);
-                return;
+                break;
             }
 
             case CMD_BASE_PLACE:
@@ -575,7 +575,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                 Send(s, "/%s %s %d to login to %s with actual delay of %d.\r\n",
                      SERVER_WHISPER, szSpeaker, pb->place, pb->server, pb->delay2);
                 msleep(3000);
-                return;
+                break;
             }
 
             case CMD_BASE_PING:
@@ -599,7 +599,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     }
                     msleep(3000);
                 }
-                return;
+                break;
             }
 
             case CMD_SERVER_BAN:
@@ -608,7 +608,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     Send(s, SERVER_COMMAND_1, SERVER_BAN, ptrDat);
                     msleep(3000);
                 }
-                return;
+                break;
             }
 
             case CMD_SERVER_UNBAN:
@@ -618,7 +618,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     Send(s, SERVER_COMMAND_1, SERVER_UNBAN, ptrDat);
                     msleep(3000);
                 }
-                return;
+                break;
             }
 
             case CMD_SERVER_KICK:
@@ -627,7 +627,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     Send(s, SERVER_COMMAND_1, SERVER_KICK, ptrDat);
                     msleep(3000);
                 }
-                return;
+                break;
             }
 
             case CMD_SERVER_JOIN:
@@ -636,14 +636,14 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     Send(s, SERVER_COMMAND_1, SERVER_JOIN, ptrDat);
                     msleep(3000);
                 }
-                return;
+                break;
             }
 
             case CMD_SERVER_REJOIN:
             {
                 Send(s, SERVER_COMMAND_0, SERVER_REJOIN);
                 msleep(3000);
-                return;
+                break;
             }
 
             case CMD_BASE_DES:
@@ -657,7 +657,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     }
                     msleep(3000);
                 }
-                return;
+                break;
             }
 
             case CMD_SERVER_RESIGN:
@@ -672,7 +672,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                         msleep(3000);
                     }
                 }
-                return;
+                break;
             }
 
             case CMD_SERVER_UPTIME:
@@ -681,7 +681,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     Send(s, SERVER_COMMAND_0, SERVER_UPTIME);
                     msleep(3000);
                 }
-                return;
+                break;
             }
 
             case CMD_BASE_OP:
@@ -695,7 +695,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     }
                     msleep(3000);
                 }
-                return;
+                break;
             }
 
             case CMD_BASE_LOCK:
@@ -707,7 +707,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     Send(s, SERVER_COMMAND_1, SERVER_WHO, pb->currChan);
                     msleep(3000);
                 }
-                return;
+                break;
             }
 
             case CMD_BASE_UNLOCK:
@@ -717,7 +717,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     Send(s, SERVER_COMMAND_1, SERVER_TOPIC, topic);
                     msleep(3000);
                 }
-                return;
+                break;
             }
 
             case CMD_BASE_CLEAN:
@@ -726,7 +726,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     Send(s, SERVER_COMMAND_1, SERVER_WHO, pb->currChan);
                     msleep(3000);
                 }
-                return;
+                break;
             }
 
             case CMD_BASE_TAG:
@@ -744,7 +744,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                         msleep(3000);
                     }
                 }
-                return;
+                break;
             }
 
             case CMD_BASE_CONTIME:
@@ -753,7 +753,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     Send(s, ON_COMMAND_REPLY_3, SERVER_WHISPER, szSpeaker, pb->conTime);
                     msleep(3000);
                 }
-                return;
+                break;
             }
 
             case CMD_BASE_MEM:
@@ -765,13 +765,13 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     Send(s, ON_COMMAND_REPLY_4, SERVER_WHISPER, szSpeaker, r_usage.ru_maxrss);
                     msleep(3000);
                 }
-                return;
+                break;
             }
 
             case CMD_UNKNOWN:
             default:
                 // No recognized command - do nothing or handle an error
-                return;
+                break;
         } // end switch
     } // end if (starts with trigger)
 }
