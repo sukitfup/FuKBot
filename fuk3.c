@@ -15,6 +15,26 @@ void set_nonblock(int s) {
 }
 
 void clean_exit(int status) {
+    if (master) {
+        free(master);
+        master = NULL;
+        masterSz = 0;
+    }
+    if (safe) {
+        free(safe);
+        safe = NULL;
+        safeSz = 0;
+    }
+    if (shit) {
+        free(shit);
+        shit = NULL;
+        shitSz = 0;
+    }
+    if (des) {
+        free(des);
+        des = NULL;
+        desSz = 0;
+    }
     if (pb) {
         free(pb);
     }
@@ -940,7 +960,7 @@ int read_config() {
         return -1;
     }
 
-    char r[MAX_LINE_SIZE];
+    char r[FUK_CFG_MAXCOUNT];
     size_t i = 0, j = 0, k = 0, d = 0;
 
     while (fgets(r, FUK_CFG_MAXCOUNT, cfg)) {
