@@ -324,9 +324,26 @@
 
 typedef struct {
     char id[MAX_LIST_LEN];
-} ListEntry;
+} masterList;
 
-ListEntry *shit, *des, *safe, *master;
+typedef struct {
+    char id[MAX_LIST_LEN];
+} safeList;
+
+typedef struct {
+    char id[MAX_LIST_LEN];
+} shitList;
+
+typedef struct {
+    char id[MAX_LIST_LEN];
+} desList;
+
+// Declare pointers for dynamically allocated lists
+masterList* master;
+safeList* safe;
+shitList* shit;
+desList* des;
+
 
 int main_pid, masterSz, safeSz, shitSz, desSz, threadSz;
 int port, threads, delay, scatter, numBots, banWait, conWait, randGreet, startTime;
