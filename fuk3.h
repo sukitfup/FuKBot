@@ -323,13 +323,10 @@
 #define MAX_LIST_LEN 21
 
 typedef struct {
-	char id[MAX_LIST_LEN];
-} masterList, safeList, shitList, desList;
+    char id[MAX_LIST_LEN];
+} ListEntry;
 
-shitList* shit;
-desList* des;
-safeList* safe;
-masterList* master;
+ListEntry *shit, *des, *safe, *master;
 
 int main_pid, masterSz, safeSz, shitSz, desSz, threadSz;
 int port, threads, delay, scatter, numBots, banWait, conWait, randGreet, startTime;
