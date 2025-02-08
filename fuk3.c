@@ -1360,13 +1360,13 @@ void create_threads(struct data* pb) {
     for (int t = 0; t < numBots; t++, pb++) {  
         char *replaced = replace_str(username, "#", t);
         if (!replaced) {
-            replaced = replace_str(username, "#", t);
+            perror("Memory allocation failed in replace_str");
+            return;
         }
         free(replaced);
         // Ensure null termination of the username
         strncpy(pb->username, replaced, sizeof(pb->username) - 1);
         pb->username[sizeof(pb->username) - 1] = '\0';
-        free(replaced); // Free dynamically allocated replaced string
 
         strncpy(pb->password, password, sizeof(pb->password) - 1);
         pb->password[sizeof(pb->password) - 1] = '\0';
