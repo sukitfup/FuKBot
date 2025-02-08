@@ -13,23 +13,15 @@ int Send(int s, const char* lpszFmt, ...) {
     return send(s, szOutStr, strlen(szOutStr), 0);
 }
 
-char *replace_str(const char *str, const char *orig, int rep) {
-    if (!str || !orig) return NULL;
-
-    char *p = strstr(str, orig);
-    if (!p) return strdup(str);  // Return a copy of original string
-
-    size_t orig_len = strlen(orig);
-    size_t rep_len = snprintf(NULL, 0, "%d", rep);  // Calculate length of replacement
-    size_t new_size = strlen(str) - orig_len + rep_len + 1;  // Compute final required size
-
-    char *buffer = malloc(new_size);
-    if (!buffer) return NULL;
-
-    size_t prefix_len = p - str;
-    snprintf(buffer, new_size, "%.*s%d%s", (int)prefix_len, str, rep, p + orig_len);
-
-    return buffer;  // Caller must free this
+char *replace_str(char *str, char *orig, int rep) {
+  static char buffer[20];
+  char *p;
+  if(!(p = strstr(str, orig)))
+    return str;
+  strncpy(buffer, str, p-str);
+  buffer[p-str] = '\0';
+  sprintf(buffer+(p-str), "%d%s", rep, p+strlen(orig));
+  return buffer;
 }
 
 void msleep(unsigned long milliseconds) {
@@ -1346,52 +1338,43 @@ void create_threads(struct data *pb) {
     int err;
     int numThreads = numBots * threads;
 
-    // Allocate thread array on the heap to avoid stack overflow
-    pthread_t *thread = malloc(numThreads * sizeof(pthread_t));
+    int numThreads = numBots * threads;
+    pthread_t thread[numThreads];
     if (!thread) {
         perror("malloc failed for thread array");
         return;
     }
 
     // Initialize each bot
-    for (int t = 0; t < numBots; t++) {
+    for (int t = 0; t < numBots; t++, pb++) {
         struct data *bot = &pb[t];
 
-        char *replaced = replace_str(username, "#", t);
-        if (!replaced) {
-            fprintf(stderr, "ERROR: replace_str() failed!\n");
-            continue;
-        }
-
-        if (strlen(replaced) >= MAX_USERNAME_LEN) {
-            fprintf(stderr, "ERROR: Username too long!\n");
-            continue;
-        }
+        char *replaced = replace_str(username, (char*)"#", t);
+        char locName[20] = { 0 };
+        memcpy(locName, replaced, strlen(replaced));
 
         strncpy(bot->username, replaced, MAX_USERNAME_LEN - 1);
-        bot->username[MAX_USERNAME_LEN - 1] = '\0';
+        pb->username[MAX_USERNAME_LEN - 1] = '\0';
 
-        snprintf(bot->password, MAX_PASSWORD_LEN, "%s", password);
-        snprintf(bot->channel, MAX_CHANNEL_LEN, "%s", channel);
-        snprintf(bot->server, MAX_SERVER_LEN, "%s", server);
-        snprintf(bot->trigger, MAX_TRIGGER_LEN, "%s", trigger);
+        snprintf(pb->password, MAX_PASSWORD_LEN, "%s", password);
+        snprintf(pb->channel, MAX_CHANNEL_LEN, "%s", channel);
+        snprintf(pb->server, MAX_SERVER_LEN, "%s", server);
+        snprintf(pb->trigger, MAX_TRIGGER_LEN, "%s", trigger);
 
-        bot->botNum = t;
-        bot->port = port;
-        bot->threads = threads;
+        pb->botNum = t;
+        pb->port = port;
+        pb->threads = threads;
 
-        snprintf(bot->logonPacket, MAX_LOGON_PACKET_LEN,
+        snprintf(pb->logonPacket, MAX_LOGON_PACKET_LEN,
                  "C1\r\nACCT %s\r\nPASS %s\r\nHOME %s\r\nLOGIN\r\n",
-                 bot->username, bot->password, bot->channel);
+                 pb->username, pb->password, pb->channel);
     }
 
     // Start threads properly
-    for (int t = 0; t < numThreads; t++) {
-        int botIndex = t % numBots;
-        err = pthread_create(&thread[t], NULL, thread_conn, &pb[botIndex]);
-        if (err != 0) {
-            fprintf(stderr, "pthread_create failed: %s\n", strerror(err));
-        }
+    for (int z = 0; z < threads; z++, i++) {
+        err = pthread_create(&thread[i], NULL, thread_conn, pb);
+        if (err < 0)
+            perror("pthread_create");
     }
 
     // Join threads
