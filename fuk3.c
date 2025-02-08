@@ -1,104 +1,11 @@
 #include "fuk3.h"
-#ifdef _WIN32
-  #include <windows.h>
-  #include <thread>
-#else
-  #include <sched.h>
-#endif
+#include <sched.h>
 
-#if defined(WINDOWS_CPP_BUILD)
-    char* mystrsep(char** stringp, const char* delim)
-    {
-        char* start = *stringp;
-        char* p;
-
-        p = (start != NULL) ? strpbrk(start, delim) : NULL;
-
-        if (p == NULL)
-        {
-            *stringp = NULL;
-        }
-        else
-        {
-            *p = '\0';
-            *stringp = p + 1;
-        }
-
-        return start;
-    }
-#endif
-
-#if defined(WINDOWS_CPP_BUILD)
-    void* ReAllocArray(void* ptr, size_t nmemb, size_t size) {
-        const size_t zerobase = 1;
-        size_t xsize = ((nmemb + zerobase) * size);
-        void* newpointer;
-        if ((newpointer = realloc(ptr, xsize)) == NULL) { /* i havent looked up realloc in some time but this should be the equiv */
-            free(ptr);
-            ptr = NULL;
-            size = 0;
-            return (NULL);
-        }
-        return newpointer;
-    }
-
-    int __cdecl getrusage(int who, struct rusage *r_usageval)
-    {
-        PROCESS_MEMORY_COUNTERS pmc;
-        FILETIME        starttime;
-        FILETIME        exittime;
-        FILETIME        KernelTime;
-        FILETIME        UserTime;
-        ULARGE_INTEGER  li;
-
-        if (!&r_usageval)
-        {
-            errno = EFAULT;
-            return -1;
-        }
-
-        if (who != RUSAGE_SELF)
-        {
-            errno = EINVAL;
-            return -1;
-        }
-
-        memset(r_usageval, 0, sizeof(struct rusage));
-        if (GetProcessTimes(GetCurrentProcess(),
-            &starttime, &exittime, &KernelTime, &UserTime) == 0)
-        {
-            return -1;
-        }
-
-        if (!GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc))) {
-            return -1;
-        }
-
-        /* Convert FILETIMEs (0.1 us) to struct timeval */
-        memcpy(&li, &KernelTime, sizeof(FILETIME));
-        li.QuadPart /= 10L;         /* Convert to microseconds */
-        r_usageval->ru_stime.tv_sec = li.QuadPart / 10000000L;
-        r_usageval->ru_stime.tv_usec = li.QuadPart % 10000000L;
-
-        memcpy(&li, &UserTime, sizeof(FILETIME));
-        li.QuadPart /= 10L;         /* Convert to microseconds */
-        r_usageval->ru_utime.tv_sec = li.QuadPart / 10000000L;
-        r_usageval->ru_utime.tv_usec = li.QuadPart % 10000000L;
-
-        r_usageval->ru_majflt = pmc.PageFaultCount;
-        r_usageval->ru_maxrss = pmc.PeakWorkingSetSize / 1024;
-
-        return 0;
-    }
-#endif
-
-#if !defined(WINDOWS_CPP_BUILD) /* windows build running ioctl equivilant */
-    void set_nonblock(int fd) {
-        int old_option = fcntl(fd, F_GETFL);
-        int new_option = old_option | O_NONBLOCK;
-        fcntl(fd, F_SETFL, new_option);
-    }
-#endif
+void set_nonblock(int fd) {
+	int old_option = fcntl(fd, F_GETFL);
+	int new_option = old_option | O_NONBLOCK;
+	fcntl(fd, F_SETFL, new_option);
+}
 
 void cfgStuff(int s, struct data* pb, char* com, char* text) {
     int x;
@@ -311,7 +218,7 @@ void OnJoin(int s, struct data* pb, char* szSpeaker) {
             }
         }
     } 
-} /* dont need to return at the end of a void function */
+}
 
 void OnUserFlags(int s, struct data* pb, char* szSpeaker, u_long uFlags) {
     if (uFlags == 18 && !strcasecmp(pb->username, szSpeaker)) {
@@ -343,9 +250,6 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText) {
         return;
     else {
         if (szEventText[0] == pb->trigger[0] || szEventText[0] == "?"[0]) {
-            /*
-                removed the strdup
-            */
             char tmpBuf[256] = { 0 };
             memcpy(tmpBuf, szEventText + 1, strlen(szEventText + 1));
             char* ptrDat = tmpBuf;
@@ -563,17 +467,10 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText) {
                 }
                 else if (!strcasecmp(BASE_PING, com) && pb->botNum == 0) {
                     memset(pingStr, '\0', sizeof(pingStr));
-#if defined(WINDOWS_CPP_BUILD)
-                    sprintf(pingStr, "%s %s", BASE_PING, pb->server);
-#else
                     sprintf(pingStr, "%s -c1 %s", BASE_PING, pb->server);
-#endif
                     fp1 = popen(pingStr, "r");
                     fgets(pi, 512, fp1);
                     fgets(pi, 512, fp1);
-#if defined(WINDOWS_CPP_BUILD)
-                    fgets(pi, 512, fp1);
-#endif
                     Send(s, SERVER_BASE_SPEAK, pi);
                     pclose(fp1); /* if your going to use popen, use pclose */
                     msleep(3000);
@@ -702,7 +599,6 @@ void OnChannel(int s, struct data* pb, char* szEventText) {
         pb->chanham = 0;
         Send(s, SERVER_COMMAND_0, SERVER_PLACE);
         msleep(3000);
-        return;
     }
     else if (!strcasecmp(szEventText, CHANNEL_VOID)) {
         pb->chanham = 1;
@@ -710,9 +606,8 @@ void OnChannel(int s, struct data* pb, char* szEventText) {
         msleep(3000);
         Send(s, SERVER_COMMAND_1, SERVER_JOIN, backup);
         msleep(3000);
-        return;
     }
-} /* you dont need a return at the end of a void function [remove this note if you ever revisit it] */
+}
 
 void OnInfo(int s, struct data *pb, char *szEventText) {
     if (strstr(szEventText, BASE_INIT6)) {
@@ -789,7 +684,6 @@ void OnInfo(int s, struct data *pb, char *szEventText) {
             }
             OnJoin(s, pb, user2);
         }
-        return; /* this return dosent need to be here but whatever lol */
     }
 }
 
@@ -803,7 +697,6 @@ void OnError(int s, struct data *pb, char *szEventText) {
     }
     if (strstr(szEventText, BASE_USERNOTLOGGEDON_TEXT)) {
         pb->des=0;
-        return;
     }
 }
 
@@ -811,11 +704,9 @@ void OnPing(int s, struct data *pb, char *szEventText) {
     if (pb->chanham==1) {
         Send(s, SERVER_COMMAND_1, SERVER_JOIN, pb->channel);
         msleep(3000);
-        return;
     } else {
         Send(s, SERVER_COMMAND_1, SERVER_PONG, szEventText);
         msleep(3000);
-        return;
     }
 }
 
@@ -900,10 +791,6 @@ void Dispatch(int s, struct data *pb, char *szEventText) {
         return;
 }
 
-/*
-    local variable "int try" was getting caught as a (try/catch) block
-    wasent needed regardless just return the send().
-*/
 int Send(int s, const char* lpszFmt, ...) {
     char szOutStr[256];
     va_list argptr;
@@ -913,10 +800,6 @@ int Send(int s, const char* lpszFmt, ...) {
     return send(s, szOutStr, strlen(szOutStr), 0);
 }
 
-/*
-    type casting, though this shouldent matter to C
-    so the changes made should still compile.
-*/
 void message_loop(int s, struct data* pb) {
     int n;
     int nBufLen = 0;
@@ -946,11 +829,7 @@ void message_loop(int s, struct data* pb) {
             }
             nBufLen += n;
             while (nBufLen > 0) {
-#ifdef _WIN32
-                unsigned char* m = (unsigned char*)stageBuf+nBufPos;
-#else
                 unsigned char* m = stageBuf + nBufPos;
-#endif
                 int nMsgLen = 0;
                 while (nMsgLen < nBufLen) {
                     if (m[nMsgLen] == '\n')
@@ -961,11 +840,7 @@ void message_loop(int s, struct data* pb) {
                 if (nMsgLen > nBufLen)
                     break;
                 m[nMsgLen - 1] = '\0';
-#ifdef _WIN32
-                Dispatch(s, pb, (char*)m);
-#else
                 Dispatch(s, pb, m);
-#endif
                 nBufLen -= nMsgLen;
                 nBufPos += nMsgLen;
             }
@@ -976,19 +851,6 @@ void message_loop(int s, struct data* pb) {
     }
     return;
 }
-
-#if !defined(WINDOWS_CPP_BUILD)
-    void msleep(unsigned long milisec) {
-        struct timespec req={0};
-        time_t sec=(int)(milisec/1000);
-        milisec=milisec-(sec*1000);
-        req.tv_sec=sec;
-        req.tv_nsec=milisec*1000000L;
-        while(nanosleep(&req,&req)==-1)
-             continue;
-        return;
-    }
-#endif
 
 char *replace_str(char *str, char *orig, int rep) {
   static char buffer[20];
@@ -1145,318 +1007,150 @@ int read_config() {
     } 
     return 0;
 }
-
-#if defined(WINDOWS_CPP_BUILD)
-	int Connect(int s, struct timeval tv, struct data* pb) {
+      
+int Connect(int s, struct timeval tv, struct data* pb) {
 	fd_set fdr, fdw;
-	int on=1, err=0, errlen=4;
-	int sockinlen=16;
-	struct sockaddr_in name;
+	int on = 1, err = 0, errlen = 4;
+	int sockinlen = 16;
 	struct sockaddr_in name2 = { AF_INET, 0, INADDR_ANY };
-        struct addrinfo hints, *res;
-
-        memset(&hints, 0, sizeof(hints));
-        hints.ai_family = AF_INET;
-        hints.ai_socktype = SOCK_STREAM;
-
-        if (getaddrinfo(pb->server, NULL, &hints, &res) != 0) {
-            return INVALID_SOCKET;
-        }
-	
-        name.sin_family = AF_INET;
-        name.sin_port = htons(pb->port);
-        name.sin_addr = ((struct sockaddr_in *)res->ai_addr)->sin_addr;
-
-        inet_pton(AF_INET, bindaddr, &(name2.sin_addr));
-        if (bind(s, (PSOCKADDR)&name2, sizeof(name2)) == INVALID_SOCKET) {
-            return INVALID_SOCKET;
-        }
-
-        ioctl(s, FIONBIO, (u_long*)&on);
-
-        FD_ZERO(&fdr); FD_SET(s,&fdr); fdw=fdr;
-        connect(s,(struct sockaddr *)&name,sizeof(name));
-        select(s+1,&fdr,&fdw,NULL,(struct timeval *)&tv);
-
-        if (FD_ISSET(s,&fdw)) {
-            getsockopt(s, SOL_SOCKET, SO_ERROR, (char*)&err, &errlen);
-        } else {
-            err = -1;
-        }
-
-        freeaddrinfo(res);
-        return err;
-    }
-#else
-    int Connect(int s, struct timeval tv, struct data* pb) {
-        fd_set fdr, fdw;
-        int on = 1, err = 0, errlen = 4;
-        int sockinlen = 16;
-        struct sockaddr_in name2 = { AF_INET, 0, INADDR_ANY };
-        struct sockaddr_in name;
+	struct sockaddr_in name;
 	struct addrinfo hints, *res;
-
-        memset(&hints, 0, sizeof(hints));
-        hints.ai_family = AF_INET;
-        hints.ai_socktype = SOCK_STREAM;
-
-        if (getaddrinfo(pb->server, NULL, &hints, &res) != 0) {
-            return INVALID_SOCKET;
-        }
+	
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+	
+	if (getaddrinfo(pb->server, NULL, &hints, &res) != 0) {
+	    return INVALID_SOCKET;
+	}
 	    
-        name.sin_family = AF_INET;
-        name.sin_port = htons(pb->port);
+	name.sin_family = AF_INET;
+	name.sin_port = htons(pb->port);
 	name.sin_addr = ((struct sockaddr_in *)res->ai_addr)->sin_addr;
 	    
-        inet_pton(AF_INET, bindaddr, &(name2.sin_addr));
-        if (bind(s, (const struct sockaddr*)&name2, sizeof(name2)) == INVALID_SOCKET) {
-            freeaddrinfo(res);
-            return INVALID_SOCKET;
-        }
+	inet_pton(AF_INET, bindaddr, &(name2.sin_addr));
+	if (bind(s, (const struct sockaddr*)&name2, sizeof(name2)) == INVALID_SOCKET) {
+	    freeaddrinfo(res);
+	    return INVALID_SOCKET;
+	}
+	
+	set_nonblock(s);
+	FD_ZERO(&fdr); FD_SET(s, &fdr); fdw = fdr;
+	connect(s, (struct sockaddr*)&name, sizeof(name));
+	select(s + 1, &fdr, &fdw, NULL, (struct timeval*)&tv);
+	
+	if (FD_ISSET(s, &fdw)) {
+	    getsockopt(s, SOL_SOCKET, SO_ERROR, &err, &errlen);
+	} else {
+	    err = -1;
+	}
+	
+	freeaddrinfo(res);
+	return err;
+}
 
-        set_nonblock(s);
-        FD_ZERO(&fdr); FD_SET(s, &fdr); fdw = fdr;
-        connect(s, (struct sockaddr*)&name, sizeof(name));
-        select(s + 1, &fdr, &fdw, NULL, (struct timeval*)&tv);
+void* thread_conn(void* arg) {
+	struct data* pb = (struct data*)arg;
+	struct timeval tv;
+	int s, off = 0;
+	tv.tv_sec = 0;
+	startTime = time(NULL);
+	if (scatter > 0) {
+	    pb->delay2 = rand() % scatter + delay;
+	}
+	else {
+	    pb->delay2 = delay;
+	}
+	tv.tv_usec = pb->delay2 * 1000;
+	//Recon Loop
+	while (__sync_bool_compare_and_swap(&pb->connected, 0, 0)) {
+	    s = socket(AF_INET, SOCK_STREAM, 0);
+	    int con = Connect(s, tv, pb);
+	    if (con == 0)
+		break;
+	    else
+		close(s);
+	}
+	//Not first so close socket and kill thread.
+	if (!__sync_bool_compare_and_swap(&pb->connected, 0, 1)) {
+	    //printf("%s Not first :( Closing socket %d\n", pb->username, s);
+	    close(s);
+	    pthread_exit(NULL);
+	}
+	//First thread to connect. Do stuff.
+	Send(s, pb->logonPacket, sizeof(pb->logonPacket), 0);
+	pb->conTime = time(NULL) - startTime;
+	//printf("%s first to connect! On socket %d\n", pb->username, s);
+	message_loop(s, pb);
+	//Disconnected. Wrap it up.
+	//printf("Disconnected... Closing socket %d\n", s);
+	close(s);
+	__sync_bool_compare_and_swap(&pb->connected, 1, 0);
+	pthread_exit(NULL);
+}
 
-        if (FD_ISSET(s, &fdw)) {
-            getsockopt(s, SOL_SOCKET, SO_ERROR, &err, &errlen);
-        } else {
-            err = -1;
-        }
-
-        freeaddrinfo(res);
-        return err;
-    }
-#endif
-
-#if defined(WINDOWS_CPP_BUILD)
-    void *thread_conn(void *arg) {
-        struct data* pb=(struct data *)arg;
-	    struct timeval tv;
-	    int s = 0, off = 0;
-	    tv.tv_sec=0;
-	    startTime = time (NULL);
-	    if (scatter > 0) {
-		    pb->delay2 = rand() % scatter + delay;
-	    }else {
-		    pb->delay2 = delay;
+void create_threads(struct data* pb) {
+	int err;
+	int i = 0;
+	int numThreads = numBots * threads;
+	pthread_t thread[numThreads];
+	//Create and configure each bot.
+	for (int t = 0; t < numBots; t++, pb++) {
+	    char *replaced = replace_str(username, (char*)"#", t);
+	    char locName[20] = { 0 };
+	    memcpy(locName, replaced, strlen(replaced));
+	    //char *thisBotsName = strdup(replace_str(username, (char*)"#", t));
+	    //There's no need to do this more than once.
+	    if (strcmp(pb->username, locName) != 0) {
+		strcpy(pb->username, locName);
+		strcpy(pb->password, password);
+		strcpy(pb->channel, channel);
+		strcpy(pb->server, server);
+		strcpy(pb->trigger, trigger);
 	    }
-	    tv.tv_usec = pb->delay2 * 1000;
-
-        //Recon Loop
-        while (pb->connected == 0) {
-		    s=socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-		    int con = Connect(s, tv, pb);
-		    if (con == 0)
-		        break;
-		    else
-			    close(s);
+	    pb->botNum = t;
+	    pb->port = port;
+	    pb->threads = threads;
+	    memset(pb->logonPacket, '\0', sizeof(pb->logonPacket));
+	    sprintf(pb->logonPacket, "C1\r\nACCT %s\r\nPASS %s\r\nHOME %s\r\nLOGIN\r\n", pb->username, pb->password, pb->channel);
+	    //Create threads for each bot.
+	    for (int z = 0; z < threads; z++, i++) {
+		err = pthread_create(&thread[i], NULL, thread_conn, pb);
+		if (err < 0)
+		    perror("pthread_create");
 	    }
+	}
+	//Join threads if they haven't already kilt themselves.
+	for (int t = 0; t < numThreads; t++) {
+	    err = pthread_join(thread[t], NULL);
+	    if (err < 0)
+		perror("pthread_exit");
+	}
+	msleep(conWait * 1000);
+}
 
-        //Not first so close socket and kill thread. /* these __sync_bool_compare_and_swap are fuckin with my eyeballs */
-        if (pb->connected == 1) {
-            //printf("%s Not first :( Closing socket %d\n", pb->username, s);
-            close(s);
-            return (NULL);
-	    }
-        pb->connected = 1;
-        //First thread to connect. Do stuff.
-        Send(s, pb->logonPacket, sizeof(pb->logonPacket), 0);
-        pb->conTime = time(NULL) - startTime;
-        //printf("%s first to connect! On socket %d\n", pb->username, s);
-        message_loop(s, pb);
-        //Disconnected. Wrap it up.
-        //printf("Disconnected... Closing socket %d\n", s);
-        close(s);
-    
-        pb->connected = 0;
-    }
-#else
-    void* thread_conn(void* arg) {
-        struct data* pb = (struct data*)arg;
-        struct timeval tv;
-        int s, off = 0;
-        tv.tv_sec = 0;
-        startTime = time(NULL);
-        if (scatter > 0) {
-            pb->delay2 = rand() % scatter + delay;
-        }
-        else {
-            pb->delay2 = delay;
-        }
-        tv.tv_usec = pb->delay2 * 1000;
-        //Recon Loop
-        while (__sync_bool_compare_and_swap(&pb->connected, 0, 0)) {
-            s = socket(AF_INET, SOCK_STREAM, 0);
-            int con = Connect(s, tv, pb);
-            if (con == 0)
-                break;
-            else
-                close(s);
-        }
-        //Not first so close socket and kill thread.
-        if (!__sync_bool_compare_and_swap(&pb->connected, 0, 1)) {
-            //printf("%s Not first :( Closing socket %d\n", pb->username, s);
-            close(s);
-            pthread_exit(NULL);
-        }
-        //First thread to connect. Do stuff.
-        Send(s, pb->logonPacket, sizeof(pb->logonPacket), 0);
-        pb->conTime = time(NULL) - startTime;
-        //printf("%s first to connect! On socket %d\n", pb->username, s);
-        message_loop(s, pb);
-        //Disconnected. Wrap it up.
-        //printf("Disconnected... Closing socket %d\n", s);
-        close(s);
-        __sync_bool_compare_and_swap(&pb->connected, 1, 0);
-        pthread_exit(NULL);
-    }
-#endif
-
-#if defined(WINDOWS_CPP_BUILD)
-    void create_threads(struct data *pb) {
-        int i = 0;
-
-        //pthread_t thread[8]; //numThreads
-        int numThreads = numBots * threads;
-        std::vector<std::thread> thread(numThreads);
-
-        //Create and configure each bot.
-        for (int t = 0; t < numBots; t++, pb++) {
-            char *replaced = replace_str(username, (char*)"#", t);
-            char locName[20] = { 0 };
-            memcpy(locName, replaced, strlen(replaced));
-            //char *thisBotsName = strdup(replace_str(username, (char*)"#", t));
-            //There's no need to do this more than once.
-            if (strcmp(pb->username, locName) != 0) {
-                strcpy(pb->username, locName);
-                strcpy(pb->password, password);
-                strcpy(pb->channel, channel);
-                strcpy(pb->server, server);
-                strcpy(pb->trigger, trigger);
-            }
-            pb->botNum = t;
-            pb->port = port;
-            pb->threads = threads;
-            memset(pb->logonPacket, '\0', sizeof(pb->logonPacket));
-            sprintf(pb->logonPacket, "C1\r\nACCT %s\r\nPASS %s\r\nHOME %s\r\nLOGIN\r\n", pb->username, pb->password, pb->channel);
-            //Create threads for each bot.
-	        for (int z = 0; z < threads; z++, i++) {
-                thread[i] = std::thread(thread_conn, pb);
-	        }
-        }
-        //Join threads if they haven't already kilt themselves.
-        for (int t = 0; t < numThreads; t++) {
-            thread[t].join();
-        }
-        msleep(conWait * 1000);
-    }
-#else
-    void create_threads(struct data* pb) {
-        int err;
-        int i = 0;
-        int numThreads = numBots * threads;
-        pthread_t thread[numThreads];
-        //Create and configure each bot.
-        for (int t = 0; t < numBots; t++, pb++) {
-            char *replaced = replace_str(username, (char*)"#", t);
-            char locName[20] = { 0 };
-            memcpy(locName, replaced, strlen(replaced));
-            //char *thisBotsName = strdup(replace_str(username, (char*)"#", t));
-            //There's no need to do this more than once.
-            if (strcmp(pb->username, locName) != 0) {
-                strcpy(pb->username, locName);
-                strcpy(pb->password, password);
-                strcpy(pb->channel, channel);
-                strcpy(pb->server, server);
-                strcpy(pb->trigger, trigger);
-            }
-            pb->botNum = t;
-            pb->port = port;
-            pb->threads = threads;
-            memset(pb->logonPacket, '\0', sizeof(pb->logonPacket));
-            sprintf(pb->logonPacket, "C1\r\nACCT %s\r\nPASS %s\r\nHOME %s\r\nLOGIN\r\n", pb->username, pb->password, pb->channel);
-            //Create threads for each bot.
-            for (int z = 0; z < threads; z++, i++) {
-                err = pthread_create(&thread[i], NULL, thread_conn, pb);
-                if (err < 0)
-                    perror("pthread_create");
-            }
-        }
-        //Join threads if they haven't already kilt themselves.
-        for (int t = 0; t < numThreads; t++) {
-            err = pthread_join(thread[t], NULL);
-            if (err < 0)
-                perror("pthread_exit");
-        }
-        msleep(conWait * 1000);
-    }
-#endif
-
-#if defined(WINDOWS_CPP_BUILD)
-    /*
-        we cant use pthread directly in windows nor can we use fork()
-        so we need to rely on the thread work.
-        also windows requires wsa to be initialized and destroyed to use sockets
-    */
-    int main() {
-        srand(time(NULL)); /* must initialize srand */
-        int mainresult = 0;
-        WSADATA mainSdata;
-        int err = WSAStartup(WINSOCK_VERSION, &mainSdata);
-
-        printf("%s\n", FUK_VERSION);
-        printf("PID: %d\n", getpid() + 1);
-
-        if (err == 0) {
-            int try_read = read_config();
-            if (try_read != 0) {
-                printf("Read config error: %i\n", try_read);
-                mainresult = 2;
-            } else {
-                pb = (struct data*)calloc(numBots, sizeof(struct data));
-
-                //Launching numBots threads.
-                while (1) { /* this right here already worrys me lol */
-                    startTime = time(NULL);
-                    create_threads(pb);
-                }
-                free(pb);
-            }
-            /* WSA had a clean start and is initalized clean it all up now */
-            WSACleanup();
-        } else {
-            printf("WSAStartup failed with error: %d\n", err);
-            mainresult = 1;
-        }
-
-        return mainresult; /* 0 = ran normaly, 1 = wsa error, 2 = failed read cfg */
-    }
-#else
-    int main() {
-        srand(time(NULL)); /* must initialize srand */
-        printf("%s\n", FUK_VERSION);
-        printf("PID: %d\n", getpid() + 1);
-        if ((main_pid = fork()) == -1) {
-            printf("shutting down: unable to fork\n");
-            exit(1);
-            return 1; /* if fork failed shouldent need to exit() though i could be wrong lol */
-        }
-        if (main_pid != 0) {
-            return 0;
-        }
-        if (read_config() != 0) {
-            perror("Read config error.");
-            exit(0);
-            return 0; 
-        }
-        pb = (struct data*)calloc(numBots, sizeof(struct data));
-        while (1) {
-            startTime = time(NULL);
-            create_threads(pb);
-        }
-        free(pb);
-        return 0; /* need to return an integer lol */
-    }
-#endif
+int main() {
+	srand(time(NULL)); /* must initialize srand */
+	printf("%s\n", FUK_VERSION);
+	printf("PID: %d\n", getpid() + 1);
+	if ((main_pid = fork()) == -1) {
+	    printf("shutting down: unable to fork\n");
+	    exit(1);
+	    return 1; /* if fork failed shouldent need to exit() though i could be wrong lol */
+	}
+	if (main_pid != 0) {
+	    return 0;
+	}
+	if (read_config() != 0) {
+	    perror("Read config error.");
+	    exit(0);
+	    return 0; 
+	}
+	pb = (struct data*)calloc(numBots, sizeof(struct data));
+	while (1) {
+	    startTime = time(NULL);
+	    create_threads(pb);
+	}
+	free(pb);
+	return 0; /* need to return an integer lol */
+}
