@@ -1,5 +1,11 @@
 #include "fuk3.h"
-#include <sched.h>
+
+void msleep(int milliseconds) {
+    struct timespec ts;
+    ts.tv_sec = milliseconds / 1000;
+    ts.tv_nsec = (milliseconds % 1000) * 1000000;
+    nanosleep(&ts, NULL);
+}
 
 void set_nonblock(int fd) {
 	int old_option = fcntl(fd, F_GETFL);
