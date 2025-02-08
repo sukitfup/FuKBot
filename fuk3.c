@@ -1,5 +1,19 @@
 #include "fuk3.h"
 
+char *replace_str(const char *str, const char *orig, int rep) {
+    char *p = strstr(str, orig);
+    if (!p) return strdup(str);  // Return a copy if no match is found
+
+    size_t new_size = strlen(str) - strlen(orig) + 20; // Estimate buffer size
+    char *buffer = malloc(new_size);
+    if (!buffer) return NULL;  // Handle allocation failure
+
+    size_t prefix_len = p - str;
+    snprintf(buffer, new_size, "%.*s%d%s", (int)prefix_len, str, rep, p + strlen(orig));
+
+    return buffer;
+}
+
 void msleep(unsigned long milliseconds) {
     struct timespec ts;
     ts.tv_sec = milliseconds / 1000;
@@ -1066,20 +1080,6 @@ void message_loop(int s, struct data* pb) {
     return;
 }
 
-char *replace_str(const char *str, const char *orig, int rep) {
-    char *p = strstr(str, orig);
-    if (!p) return strdup(str);  // Return a copy if no match is found
-
-    size_t new_size = strlen(str) - strlen(orig) + 20; // Estimate buffer size
-    char *buffer = malloc(new_size);
-    if (!buffer) return NULL;  // Handle allocation failure
-
-    size_t prefix_len = p - str;
-    snprintf(buffer, new_size, "%.*s%d%s", (int)prefix_len, str, rep, p + strlen(orig));
-
-    return buffer;
-}
-
 int save_cfg(struct data* pb) {
     FILE* cfg;
     int i;
@@ -1334,9 +1334,9 @@ void create_threads(struct data* pb) {
     for (int t = 0; t < numBots; t++, pb++) {  
         char *replaced = replace_str(username, "#", t);
         if (!replaced) {
-            continue;
+            replaced = replace_str(username, "#", t);
         }
-
+        free(replaced);
         // Ensure null termination of the username
         strncpy(pb->username, replaced, sizeof(pb->username) - 1);
         pb->username[sizeof(pb->username) - 1] = '\0';
