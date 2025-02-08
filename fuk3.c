@@ -91,11 +91,9 @@ int try_connect(struct data* pb, struct timeval tv) {
     return -1;
 }
 
-// Change the 'array' parameter to be a pointer-to-pointer so that we can update it.
-void processList(int s, char* com, char* name, char* list, masterList **pArray, int *pSize, const char* type) {
+void processList(int s, char* com, char* name, char* list, void **pArray, int *pSize, const char* type) {
+    masterList *listArray = (masterList *)(*pArray);  // Cast back to `masterList *`
     int x, once = 1, replace = 0;
-    // Get the current pointer from the caller.
-    masterList *listArray = *pArray;
 
     // Loop through the current list for REMOVAL or LIST operations.
     for (x = 0; x < *pSize; x++) {
@@ -114,14 +112,13 @@ void processList(int s, char* com, char* name, char* list, masterList **pArray, 
                             ((*pSize) - x - 1) * sizeof(masterList));
                 }
 
-                // Decrease the allocated size by 1.
-                masterList *temp = reallocarray(listArray, *pSize - 1, sizeof(masterList));
+                // If reallocation is needed
+                masterList *temp = realloc(listArray, (*pSize + 1) * sizeof(masterList));
                 if (temp) {
-                    listArray = temp;  // Only update if realloc succeeded.
-                    (*pSize)--;
+                    *pArray = temp; // Update the pointer safely
+                    (*pSize)++;
                 } else {
-                    perror("reallocarray failed while removing an entry");
-                    // If realloc fails, we continue using the original list.
+                    perror("realloc failed");
                 }
 
                 if (once) {
@@ -166,30 +163,26 @@ void processList(int s, char* com, char* name, char* list, masterList **pArray, 
 void cfgStuff(int s, struct data* pb, char* com, char* text) {
     char* pos;
     char textBuffer[FUK_CFG_MAXCOUNT];
-    
-    // Ensure safe copying of `text`
     strncpy(textBuffer, text, sizeof(textBuffer) - 1);
     textBuffer[sizeof(textBuffer) - 1] = '\0';
 
-    // Tokenize to extract `list` and `name`
     char* list = strtok_r(textBuffer, " ", &pos);
-    if (!list) return;  // Ensure valid pointer
+    if (!list) return;
     
     char* name = strtok_r(NULL, " ", &pos);
-    if (!name) return;  // Ensure valid pointer
+    if (!name) return;
 
-    // Process the correct list type
     if (strstr(list, CFGSTUFF_MASTER)) {
-        processList(s, com, name, list, (masterList**)&master, &masterSz, CFGSTUFF_MASTER);
+        processList(s, com, name, list, (void**)&master, &masterSz, CFGSTUFF_MASTER);
     }
     else if (strstr(list, CFGSTUFF_SAFE)) {
-        processList(s, com, name, list, (safeList**)&safe, &safeSz, CFGSTUFF_SAFE);
+        processList(s, com, name, list, (void**)&safe, &safeSz, CFGSTUFF_SAFE);
     }
     else if (strstr(list, CFGSTUFF_SHIT)) {
-        processList(s, com, name, list, (shitList**)&shit, &shitSz, CFGSTUFF_SHIT);
+        processList(s, com, name, list, (void**)&shit, &shitSz, CFGSTUFF_SHIT);
     }
     else if (strstr(list, CFGSTUFF_DES)) {
-        processList(s, com, name, list, (desList**)&des, &desSz, CFGSTUFF_DES);
+        processList(s, com, name, list, (void**)&des, &desSz, CFGSTUFF_DES);
     }
 }
 
