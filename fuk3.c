@@ -1,5 +1,18 @@
 #include "fuk3.h"
 
+int Send(int s, const char* lpszFmt, ...) {
+    char szOutStr[SEND_BUFFER_SIZE];
+    va_list argptr;
+    va_start(argptr, lpszFmt);
+    
+    // Prevent buffer overflow
+    vsnprintf(szOutStr, sizeof(szOutStr), lpszFmt, argptr);
+    
+    va_end(argptr);
+    
+    return send(s, szOutStr, strlen(szOutStr), 0);
+}
+
 char *replace_str(const char *str, const char *orig, int rep) {
     char *p = strstr(str, orig);
     if (!p) return strdup(str);  // Return a copy if no match is found
@@ -1019,65 +1032,78 @@ void Dispatch(int s, struct data *pb, char *szEventText) {
     }
 }
 
-int Send(int s, const char* lpszFmt, ...) {
-    char szOutStr[256];
-    va_list argptr;
-    va_start(argptr, lpszFmt);
-    vsprintf(szOutStr, lpszFmt, argptr);
-    va_end(argptr);
-    return send(s, szOutStr, strlen(szOutStr), 0);
-}
-
 void message_loop(int s, struct data* pb) {
     int n;
     int nBufLen = 0;
     int nBufPos = 0;
     char stageBuf[BUFFSIZE];
     struct timeval tv;
+
     if (s == INVALID_SOCKET) {
         return;
     }
-    for (;;) { /* ... */
+
+    for (;;) {
         fd_set fds;
         FD_ZERO(&fds);
         FD_SET(s, &fds);
         tv.tv_sec = 1;
         tv.tv_usec = 0;
-        n = select(s + 1, &fds, 0, 0, &tv);
-        if (n) {
+
+        n = select(s + 1, &fds, NULL, NULL, &tv);
+        if (n > 0) {
             int nNumToRead = BUFFSIZE - nBufLen - nBufPos;
-            if (nNumToRead == 0) {
+
+            // Ensure we don't read more than the buffer can hold
+            if (nNumToRead <= 0) {
+                if (nBufPos + nBufLen > BUFFSIZE) {
+                    // Prevent memory corruption
+                    nBufLen = BUFFSIZE - nBufPos;
+                }
                 memmove(stageBuf, stageBuf + nBufPos, nBufLen);
                 nBufPos = 0;
                 nNumToRead = BUFFSIZE - nBufLen;
             }
+
             n = recv(s, stageBuf + nBufPos + nBufLen, nNumToRead, 0);
             if (n <= 0) {
-                return;
+                return; // Handle disconnection or error
             }
+
             nBufLen += n;
+
             while (nBufLen > 0) {
-                unsigned char* m = stageBuf + nBufPos;
+                unsigned char* m = (unsigned char*) stageBuf + nBufPos;
                 int nMsgLen = 0;
-                while (nMsgLen < nBufLen) {
+
+                // Find newline character as a message delimiter
+                while (nMsgLen < nBufLen && nMsgLen < BUFFSIZE) {
                     if (m[nMsgLen] == '\n')
                         break;
                     nMsgLen++;
                 }
-                nMsgLen++;
-                if (nMsgLen > nBufLen)
-                    break;
-                m[nMsgLen - 1] = '\0';
-                Dispatch(s, pb, m);
-                nBufLen -= nMsgLen;
-                nBufPos += nMsgLen;
+
+                if (nMsgLen >= nBufLen) {
+                    break; // Incomplete message, wait for more data
+                }
+
+                // Ensure the message is null-terminated
+                m[nMsgLen] = '\0';
+
+                // Dispatch the complete message
+                Dispatch(s, pb, (char*) m);
+
+                // Adjust buffer to remove processed message
+                nBufLen -= (nMsgLen + 1);
+                nBufPos += (nMsgLen + 1);
+
+                // Reset buffer if empty
+                if (nBufLen == 0)
+                    nBufPos = 0;
             }
-            if (!nBufLen)
-                nBufPos = 0;
         }
-        msleep(500);
+        msleep(500); // Small delay to prevent CPU overuse
     }
-    return;
 }
 
 int save_cfg(struct data* pb) {
