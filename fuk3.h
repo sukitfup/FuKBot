@@ -114,7 +114,8 @@
 	#include <string.h>
 	#include <errno.h>
 	#include <stdarg.h>
-	#include <fcntl.h>	/* using ioctl in the windows build */
+	#include <fcntl.h>
+	#include <signal.h>
 #endif
 
 #define BUILD_DATE	" (Built " __DATE__ " " __TIME__ ")"
