@@ -1352,48 +1352,42 @@ void create_threads(struct data* pb) {
         return;
     }
 
-    for (int t = 0; t < numBots; t++, pb++) {
+    for (int t = 0; t < numBots; t++) {
+        struct data *bot = &pb[t];
+
         char *replaced = replace_str(username, "#", t);
         if (!replaced) {
             fprintf(stderr, "ERROR: replace_str() failed!\n");
-            exit(EXIT_FAILURE);
+            continue;  // Skip this bot, avoid crashing
         }
+
         if (strlen(replaced) >= MAX_USERNAME_LEN) {
             fprintf(stderr, "ERROR: username too long!\n");
+            free(replaced);
             exit(EXIT_FAILURE);
         }
-        strncpy(pb->username, replaced, MAX_USERNAME_LEN - 1);
-        pb->username[MAX_USERNAME_LEN - 1] = '\0';
+        strncpy(bot->username, replaced, MAX_USERNAME_LEN - 1);
+        bot->username[MAX_USERNAME_LEN - 1] = '\0';
+        free(replaced);
 
-        free(replaced); // Free dynamically allocated memory
+        // Initialize other fields safely
+        snprintf(bot->password, MAX_PASSWORD_LEN, "%s", password);
+        snprintf(bot->channel, MAX_CHANNEL_LEN, "%s", channel);
+        snprintf(bot->server, MAX_SERVER_LEN, "%s", server);
+        snprintf(bot->trigger, MAX_TRIGGER_LEN, "%s", trigger);
 
-        // Copy other fields safely
-        strncpy(pb->password, password, MAX_PASSWORD_LEN - 1);
-        pb->password[MAX_PASSWORD_LEN - 1] = '\0';
+        bot->botNum = t;
+        bot->port = port;
+        bot->threads = threads;
 
-        strncpy(pb->channel, channel, MAX_CHANNEL_LEN - 1);
-        pb->channel[MAX_CHANNEL_LEN - 1] = '\0';
-
-        strncpy(pb->server, server, MAX_SERVER_LEN - 1);
-        pb->server[MAX_SERVER_LEN - 1] = '\0';
-
-        strncpy(pb->trigger, trigger, MAX_TRIGGER_LEN - 1);
-        pb->trigger[MAX_TRIGGER_LEN - 1] = '\0';
-
-        pb->botNum = t;
-        pb->port = port;
-        pb->threads = threads;
-
-        // Ensure `logonPacket` stays within `MAX_LOGON_PACKET_LEN`
-        snprintf(pb->logonPacket, MAX_LOGON_PACKET_LEN - 1,
+        snprintf(bot->logonPacket, MAX_LOGON_PACKET_LEN,
                  "C1\r\nACCT %s\r\nPASS %s\r\nHOME %s\r\nLOGIN\r\n",
-                 pb->username, pb->password, pb->channel);
-        pb->logonPacket[MAX_LOGON_PACKET_LEN - 1] = '\0';
+                 bot->username, bot->password, bot->channel);
     }
 
-    // Start threads safely
+    // Start threads properly
     for (int t = 0; t < numThreads; t++) {
-        err = pthread_create(&thread[t], NULL, thread_conn, pb);
+        err = pthread_create(&thread[t], NULL, thread_conn, &pb[t % numBots]);
         if (err != 0) {
             fprintf(stderr, "pthread_create failed: %s\n", strerror(err));
         }
@@ -1403,11 +1397,11 @@ void create_threads(struct data* pb) {
         pthread_join(thread[t], NULL);
     }
 
-    free(thread);  // Free allocated thread memory
+    free(thread);
 }
 
 int main() {
-    srand((unsigned)time(NULL));  // Initialize srand with explicit unsigned cast
+    srand((unsigned)time(NULL));
     setup_signal_handlers();
     printf("%s\n", FUK_VERSION);
     printf("PID: %d\n", getpid());
@@ -1417,28 +1411,27 @@ int main() {
         perror("Memory allocation failed for pb");
         exit(EXIT_FAILURE);
     }
-    
+
+    allocate_lists();
+
+    if (read_config() != 0) {
+        perror("Read config error");
+        clean_exit(EXIT_FAILURE);
+    }
+
     if ((main_pid = fork()) == -1) {
         perror("shutting down: unable to fork");
         return EXIT_FAILURE;
     }
 
     if (main_pid != 0) {
-        return EXIT_SUCCESS;  // Parent process exits cleanly
-    }
-    
-    allocate_lists();
-    
-    if (read_config() != 0) {
-        perror("Read config error");
-        clean_exit(EXIT_FAILURE);
+        return EXIT_SUCCESS;
     }
 
-    // Main event loop
     while (1) {
         startTime = time(NULL);
         create_threads(pb);
-        sleep(1);  // Prevent high CPU usage
+        sleep(1);
     }
 
     clean_exit(EXIT_SUCCESS);
