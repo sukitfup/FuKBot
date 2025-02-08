@@ -14,7 +14,7 @@ void set_nonblock(int s) {
     }
 }
 
-void clean_exit(int status) {
+void free_config() {
     if (master) {
         free(master);
         master = NULL;
@@ -35,10 +35,19 @@ void clean_exit(int status) {
         des = NULL;
         desSz = 0;
     }
+}
+
+void clean_exit(int status) {
+    free_config();
     if (pb) {
         free(pb);
     }
     exit(status);
+}
+
+void setup_signal_handlers() {
+    signal(SIGINT, clean_exit);
+    signal(SIGTERM, clean_exit);
 }
 
 int try_connect(struct data* pb, struct timeval tv) {
@@ -1214,9 +1223,9 @@ void create_threads(struct data* pb) {
 
 int main() {
     srand((unsigned)time(NULL));  // Initialize srand with explicit unsigned cast
-
+    setup_signal_handlers();
     printf("%s\n", FUK_VERSION);
-    printf("PID: %d\n", getpid() + 1);
+    printf("PID: %d\n", getpid());
 
     if ((main_pid = fork()) == -1) {
         perror("shutting down: unable to fork");
@@ -1238,9 +1247,11 @@ int main() {
         clean_exit(EXIT_FAILURE);
     }
 
+    // Main event loop
     while (1) {
         startTime = time(NULL);
         create_threads(pb);
+        sleep(1);  // Prevent high CPU usage
     }
 
     clean_exit(EXIT_SUCCESS);
