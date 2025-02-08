@@ -49,10 +49,13 @@
 	#define close closesocket
 	#define popen _popen
 	#define pclose _pclose
-	#define sleepextra(v) (std::this_thread::sleep_for(std::chrono::milliseconds(v)))
 	#define usleep sleepextra
 	#define msleep sleepextra
 	#define getpid GetCurrentProcessId
+
+	inline void sleepextra(int v) {
+	    std::this_thread::sleep_for(std::chrono::milliseconds(v));
+	}
 
 	struct rusage {
 		struct timeval ru_utime; /* user CPU time used */
