@@ -825,76 +825,66 @@ void OnChannel(int s, struct data* pb, char* szEventText) {
 }
 
 void OnInfo(int s, struct data *pb, char *szEventText) {
-    if (strstr(szEventText, BASE_INIT6)) {
+    char szEventTextCopy[strlen(szEventText) + 1];
+    strncpy(szEventTextCopy, szEventText, sizeof(szEventTextCopy) - 1);
+    szEventTextCopy[sizeof(szEventTextCopy) - 1] = '\0';
+
+    if (strstr(szEventTextCopy, BASE_INIT6) || strstr(szEventTextCopy, BASE_SETTHETOPIC) ||
+        strstr(szEventTextCopy, BASE_WASKICKED) || strstr(szEventTextCopy, BASE_WASBANNED) ||
+        strstr(szEventTextCopy, BASE_WASUNBANNED) || strstr(szEventTextCopy, BASE_NOCHATPRIV) ||
+        strstr(szEventTextCopy, BASE_CHATCHANNEL) || strstr(szEventTextCopy, BASE_CHANNELUSERS)) {
         return;
     }
-    else if (strstr(szEventText, BASE_SETTHETOPIC)) {
-        return;
-    }
-    else if (strstr(szEventText, BASE_WASKICKED)) {
-        return;
-    }
-    else if (strstr(szEventText, BASE_WASBANNED)) {
-        return;
-    }
-    else if (strstr(szEventText, BASE_WASUNBANNED)) {
-        return;
-    }
-    else if (strstr(szEventText, BASE_NOCHATPRIV)) {
-        return;
-    }
-    else if (strstr(szEventText, BASE_CHATCHANNEL)) {
-        return;
-    }
-    else if (strstr(szEventText, BASE_CHANNELUSERS)) {
-        return;
-    }
-    else if(strstr(szEventText, BASE_NEWHEIR)) {
-        pb->des=1;
-        if(pb->op!=0 && pb->hasop!=0) {
-            pb->op=0;
+    else if (strstr(szEventTextCopy, BASE_NEWHEIR)) {
+        pb->des = 1;
+        if (pb->op != 0 && pb->hasop != 0) {
+            pb->op = 0;
             Send(s, SERVER_COMMAND_0, SERVER_RESIGN);
             msleep(3000);
         }
         return;
     }
-    else if(strstr(szEventText, BASE_PLACED)) {
-        char *tmp;
-        char *pos;
-        tmp=strtok_r(szEventText, " ", &pos);
-        tmp=strtok_r(NULL, " ", &pos);
-        tmp=strtok_r(NULL, " ", &pos);
-        pb->place=atoi(tmp);
+    else if (strstr(szEventTextCopy, BASE_PLACED)) {
+        char *tmp, *pos;
+        tmp = strtok_r(szEventTextCopy, " ", &pos);
+        if (tmp) tmp = strtok_r(NULL, " ", &pos);
+        if (tmp) tmp = strtok_r(NULL, " ", &pos);
+        if (tmp) {
+            char *endptr;
+            pb->place = strtol(tmp, &endptr, 10);
+            if (*endptr != '\0') {
+                // Handle error if conversion fails
+            }
+        }
         return;
     }
-    else if(strstr(szEventText, BASE_CUPTIME)) {
-        char *tmp;
-        char *pos;
-        tmp=strtok_r(szEventText, "\r\n", &pos);
-        Send(s, SERVER_BASE_SPEAK, tmp);
-        msleep(3000);
+    else if (strstr(szEventTextCopy, BASE_CUPTIME)) {
+        char *tmp, *pos;
+        tmp = strtok_r(szEventTextCopy, "\r\n", &pos);
+        if (tmp) {
+            Send(s, SERVER_BASE_SPEAK, tmp);
+            msleep(3000);
+        }
         return;
     }
-    else if(strstr(szEventText, BASE_YOUWEREKICKED)){
-        pb->chanham=1;
+    else if (strstr(szEventTextCopy, BASE_YOUWEREKICKED)) {
+        pb->chanham = 1;
         Send(s, SERVER_COMMAND_1, SERVER_JOIN, backup);
         msleep(3000);
         return;
-    } 
+    }
     else {
-        char *pos;
-        char *user1;
-        char *user2;
-        user1 = strtok_r(szEventText, ", ", &pos);
-        if(user1!=NULL) {
-            while ((*user1 == ' ')) {
+        char *pos, *user1, *user2;
+        user1 = strtok_r(szEventTextCopy, ", ", &pos);
+        if (user1) {
+            while (*user1 == ' ') {
                 ++user1;
             }
             OnJoin(s, pb, user1);
         }
         user2 = strtok_r(NULL, "\r\n", &pos);
-        if(user2!=NULL) {
-            while ((*user2 == ' ')) {
+        if (user2) {
+            while (*user2 == ' ') {
                 ++user2;
             }
             OnJoin(s, pb, user2);
