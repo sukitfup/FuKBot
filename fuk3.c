@@ -16,10 +16,10 @@ void set_nonblock(int s) {
 
 // Memory allocation (call this in `main()`)
 void allocate_lists() {
-    shit = malloc(sizeof(ListEntry) * shitSz);
-    des = malloc(sizeof(ListEntry) * desSz);
-    safe = malloc(sizeof(ListEntry) * safeSz);
-    master = malloc(sizeof(ListEntry) * masterSz);
+    shit = malloc(sizeof(MAX_LIST_LEN) * shitSz);
+    des = malloc(sizeof(MAX_LIST_LEN) * desSz);
+    safe = malloc(sizeof(MAX_LIST_LEN) * safeSz);
+    master = malloc(sizeof(MAX_LIST_LEN) * masterSz);
 
     if (!shit || !des || !safe || !master) {
         perror("Memory allocation failed for lists");
