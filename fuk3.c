@@ -59,7 +59,7 @@ void allocate_lists() {
         exit(EXIT_FAILURE);
     }
 
-    pb = calloc(1, sizeof(struct data));
+    pb = calloc(numBots, sizeof(struct data));
     if (!pb) {
         perror("Memory allocation failed for pb");
         exit(EXIT_FAILURE);
