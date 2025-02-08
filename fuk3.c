@@ -113,7 +113,7 @@ void processList(int s, char* com, char* name, char* list, void* array, int* siz
 
 void cfgStuff(int s, struct data* pb, char* com, char* text) {
     char* pos;
-    char textBuffer[MAX_SIZE];
+    char textBuffer[FUK_CFG_MAXCOUNT];
     strncpy(textBuffer, text, sizeof(textBuffer) - 1);
     textBuffer[sizeof(textBuffer) - 1] = '\0';
 
