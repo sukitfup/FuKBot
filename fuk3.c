@@ -1354,8 +1354,8 @@ void create_threads(struct data* pb) {
         perror("malloc failed for thread array");
         return;
     }
-
-    for (int t = 0; t < numBots; t++, pb++) {  
+    struct data *p = pb;
+    for (int t = 0; t < numBots; t++, pb_ptr++)
         char *replaced = replace_str(username, "#", t);
         if (!replaced) {
             perror("Memory allocation failed in replace_str");
