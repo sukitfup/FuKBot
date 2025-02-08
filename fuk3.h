@@ -363,7 +363,6 @@ void Dispatch(int s, struct data* pb, char* szEventText);
 int Send(int s, const char* lpszFmt, ...); /* match vars */
 void message_loop(int s, struct data* pb);
 void msleep(unsigned long milisec);
-#endif
 char* replace_str(char* str, char* orig, int rep);
 int save_cfg(struct data* pb);
 int read_config();
