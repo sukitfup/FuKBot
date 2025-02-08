@@ -893,107 +893,116 @@ void OnInfo(int s, struct data *pb, char *szEventText) {
 }
 
 void OnError(int s, struct data *pb, char *szEventText) {
+    if (!pb || !szEventText) {
+        return;  // Prevent NULL dereferences
+    }
+
     if (strstr(szEventText, BASE_CHANRESTRICTED_TEXT)) {
         return;
     }
-    if (strstr(szEventText, BASE_INVALIDUSER_TEXT)){
-        pb->des=0;
+    if (strstr(szEventText, BASE_INVALIDUSER_TEXT)) {
+        pb->des = 0;
         return;
     }
     if (strstr(szEventText, BASE_USERNOTLOGGEDON_TEXT)) {
-        pb->des=0;
+        pb->des = 0;
     }
 }
 
 void OnPing(int s, struct data *pb, char *szEventText) {
-    if (pb->chanham==1) {
+    if (!pb || !szEventText) {
+        return;  // Prevent NULL dereferences
+    }
+
+    if (pb->chanham == 1) {
         Send(s, SERVER_COMMAND_1, SERVER_JOIN, pb->channel);
-        msleep(3000);
     } else {
         Send(s, SERVER_COMMAND_1, SERVER_PONG, szEventText);
-        msleep(3000);
     }
+    
+    msleep(3000);  // Ensure `pb` remains valid if this runs in a multi-threaded environment
 }
 
 void Dispatch(int s, struct data *pb, char *szEventText) {
-    char *eventType;
-    char *pos;
-    char *USER_CMD;
-    char *USER_FLAGS;
-    char *USER_PING;
-    char *USER_NAME;
-    char *USER_DIRECTION;
-    char *USER_MSG;
-    char *CHANNEL_CMD;
-    char *CHANNEL_NAME;
-    char *SERVER_MSG;
-    char *SERVER_CMD;
+    if (!pb || !szEventText) {
+        return;  // Prevent NULL dereference
+    }
+
+    char *eventType, *pos;
+    char *USER_CMD, *USER_FLAGS, *USER_PING, *USER_NAME, *USER_DIRECTION, *USER_MSG;
+    char *CHANNEL_CMD, *CHANNEL_NAME;
+    char *SERVER_MSG, *SERVER_CMD;
     char *PING;
+
     eventType = strtok_r(szEventText, " ", &pos);
-    if(!strcasecmp(eventType, "USER")) {
+    if (!eventType) return;  // Ensure we have an event type
+
+    if (!strcasecmp(eventType, "USER")) {
         USER_CMD = strtok_r(NULL, " ", &pos);
-        if(!strcasecmp(USER_CMD, "IN")) {
+        if (!USER_CMD) return;
+
+        if (!strcasecmp(USER_CMD, "IN") || !strcasecmp(USER_CMD, "UPDATE") || !strcasecmp(USER_CMD, "JOIN")) {
             USER_FLAGS = strtok_r(NULL, " ", &pos);
             USER_PING = strtok_r(NULL, " ", &pos);
             USER_NAME = strtok_r(NULL, " ", &pos);
+
+            if (!USER_FLAGS || !USER_PING || !USER_NAME) return;  // Validate required tokens
+
             OnUserFlags(s, pb, USER_NAME, atoi(USER_FLAGS));
             return;
-        } else if(!strcasecmp(USER_CMD, "UPDATE")) {
-            USER_FLAGS = strtok_r(NULL, " ", &pos);
-            USER_PING = strtok_r(NULL, " ", &pos);
-            USER_NAME = strtok_r(NULL, " ", &pos);
-            OnUserFlags(s, pb, USER_NAME, atoi(USER_FLAGS));
-            return;
-        } else if(!strcasecmp(USER_CMD, "EMOTE")) {
+        } else if (!strcasecmp(USER_CMD, "EMOTE")) {
             USER_NAME = strtok_r(NULL, " ", &pos);
             USER_MSG = strtok_r(NULL, " ", &pos);
+
+            if (!USER_NAME || !USER_MSG) return;
+
             OnTalk(s, pb, USER_NAME, USER_MSG);
             return;
-        } else if(!strcasecmp(USER_CMD, "JOIN")) {
-            USER_FLAGS = strtok_r(NULL, " ", &pos);
-            USER_PING = strtok_r(NULL, " ", &pos);
-            USER_NAME = strtok_r(NULL, " ", &pos);
-            OnJoin(s, pb, USER_NAME);
-            return;
-        } else if(!strcasecmp(USER_CMD, "WHISPER")) {
+        } else if (!strcasecmp(USER_CMD, "WHISPER") || !strcasecmp(USER_CMD, "TALK")) {
             USER_DIRECTION = strtok_r(NULL, " ", &pos);
             USER_NAME = strtok_r(NULL, " ", &pos);
             USER_MSG = strtok_r(NULL, "\r\n", &pos);
+
+            if (!USER_DIRECTION || !USER_NAME || !USER_MSG) return;
+
             OnTalk(s, pb, USER_NAME, USER_MSG);
             return;
-        } else if(!strcasecmp(USER_CMD, "TALK")) {
-            USER_DIRECTION = strtok_r(NULL, " ", &pos);
-            USER_NAME = strtok_r(NULL, " ", &pos);
-            USER_MSG = strtok_r(NULL, "\r\n", &pos);
-            OnTalk(s , pb, USER_NAME, USER_MSG);
-            return;
-        }else
-            return;
-    } else if(!strcasecmp(eventType, "CHANNEL")) {
+        }
+        return;
+    } else if (!strcasecmp(eventType, "CHANNEL")) {
         CHANNEL_CMD = strtok_r(NULL, " ", &pos);
-        if(!strcasecmp(CHANNEL_CMD, "JOIN")) {
+        if (!CHANNEL_CMD) return;
+
+        if (!strcasecmp(CHANNEL_CMD, "JOIN")) {
             CHANNEL_NAME = strtok_r(NULL, "\r\n", &pos);
+            if (!CHANNEL_NAME) return;
+
             OnChannel(s, pb, CHANNEL_NAME);
         }
         return;
-    } else if(!strcasecmp(eventType, "SERVER")) {
+    } else if (!strcasecmp(eventType, "SERVER")) {
         SERVER_CMD = strtok_r(NULL, " ", &pos);
-        if(!strcasecmp(SERVER_CMD, "INFO")) {
+        if (!SERVER_CMD) return;
+
+        if (!strcasecmp(SERVER_CMD, "INFO") || !strcasecmp(SERVER_CMD, "ERROR")) {
             SERVER_MSG = strtok_r(NULL, "\r\n", &pos);
-            OnInfo(s, pb, SERVER_MSG);
+            if (!SERVER_MSG) return;
+
+            if (!strcasecmp(SERVER_CMD, "INFO")) {
+                OnInfo(s, pb, SERVER_MSG);
+            } else {
+                OnError(s, pb, SERVER_MSG);
+            }
             return;
-        } else if(!strcasecmp(SERVER_CMD, "ERROR")) {
-            SERVER_MSG = strtok_r(NULL, "\r\n", &pos);
-            OnError(s, pb, SERVER_MSG);
-            return;
-        } else
-            return;
-    } else if(!strcasecmp(eventType, "PING")) {
+        }
+        return;
+    } else if (!strcasecmp(eventType, "PING")) {
         PING = strtok_r(NULL, " ", &pos);
+        if (!PING) return;
+
         OnPing(s, pb, PING);
         return;
-    } else
-        return;
+    }
 }
 
 int Send(int s, const char* lpszFmt, ...) {
@@ -1057,15 +1066,18 @@ void message_loop(int s, struct data* pb) {
     return;
 }
 
-char *replace_str(char *str, char *orig, int rep) {
-  static char buffer[20];
-  char *p;
-  if(!(p = strstr(str, orig)))
-    return str;
-  strncpy(buffer, str, p-str);
-  buffer[p-str] = '\0';
-  sprintf(buffer+(p-str), "%d%s", rep, p+strlen(orig));
-  return buffer;
+char *replace_str(const char *str, const char *orig, int rep) {
+    char *p = strstr(str, orig);
+    if (!p) return strdup(str);  // Return a copy if no match is found
+
+    size_t new_size = strlen(str) - strlen(orig) + 20; // Estimate buffer size
+    char *buffer = malloc(new_size);
+    if (!buffer) return NULL;  // Handle allocation failure
+
+    size_t prefix_len = p - str;
+    snprintf(buffer, new_size, "%.*s%d%s", (int)prefix_len, str, rep, p + strlen(orig));
+
+    return buffer;
 }
 
 int save_cfg(struct data* pb) {
