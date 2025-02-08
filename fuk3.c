@@ -193,6 +193,50 @@ void OnUserFlags(int s, struct data* pb, char* szSpeaker, u_long uFlags) {
     }
 }
 
+static enum CommandID resolve_command(const char* com) {
+    if (!com) return CMD_UNKNOWN;
+
+    if (!strcasecmp(com, CFGSTUFF_LIST))      return CMD_CFGSTUFF_LIST;
+    if (!strcasecmp(com, CFGSTUFF_ADD))       return CMD_CFGSTUFF_ADD;
+    if (!strcasecmp(com, CFGSTUFF_REM))       return CMD_CFGSTUFF_REM;
+    if (!strcasecmp(com, BASE_TRIGGER))       return CMD_BASE_TRIGGER;
+    if (!strcasecmp(com, BASE_HOME))          return CMD_BASE_HOME;
+    if (!strcasecmp(com, BASE_TOPIC))         return CMD_BASE_TOPIC;
+    if (!strcasecmp(com, BASE_BACKUP))        return CMD_BASE_BACKUP;
+    if (!strcasecmp(com, BASE_SERVER))        return CMD_BASE_SERVER;
+    if (!strcasecmp(com, BASE_THREADS))       return CMD_BASE_THREADS;
+    if (!strcasecmp(com, BASE_PORT))          return CMD_BASE_PORT;
+    if (!strcasecmp(com, BASE_DELAY))         return CMD_BASE_DELAY;
+    if (!strcasecmp(com, BASE_DELAY_2))       return CMD_BASE_DELAY_2;
+    if (!strcasecmp(com, BASE_SCATTER))       return CMD_BASE_SCATTER;
+    if (!strcasecmp(com, BASE_BANWAIT))       return CMD_BASE_BANWAIT;
+    if (!strcasecmp(com, BASE_CONWAIT))       return CMD_BASE_CONWAIT;
+    if (!strcasecmp(com, BASE_SAY))           return CMD_BASE_SAY;
+    if (!strcasecmp(com, BASE_VER))           return CMD_BASE_VER;
+    if (!strcasecmp(com, BASE_QUIT))          return CMD_BASE_QUIT;
+    if (!strcasecmp(com, BASE_RECON))         return CMD_BASE_RECON;
+    if (!strcasecmp(com, BASE_PLACE))         return CMD_BASE_PLACE;
+    if (!strcasecmp(com, BASE_PING))          return CMD_BASE_PING;
+    if (!strcasecmp(com, SERVER_BAN))         return CMD_SERVER_BAN;
+    if (!strcasecmp(com, SERVER_UNBAN))       return CMD_SERVER_UNBAN;
+    if (!strcasecmp(com, SERVER_KICK))        return CMD_SERVER_KICK;
+    if (!strcasecmp(com, SERVER_JOIN))        return CMD_SERVER_JOIN;
+    if (!strcasecmp(com, SERVER_REJOIN))      return CMD_SERVER_REJOIN;
+    if (!strcasecmp(com, BASE_DES))           return CMD_BASE_DES;
+    if (!strcasecmp(com, SERVER_RESIGN))      return CMD_SERVER_RESIGN;
+    if (!strcasecmp(com, SERVER_UPTIME))      return CMD_SERVER_UPTIME;
+    if (!strcasecmp(com, BASE_OP))            return CMD_BASE_OP;
+    if (!strcasecmp(com, BASE_LOCK))          return CMD_BASE_LOCK;
+    if (!strcasecmp(com, BASE_UNLOCK))        return CMD_BASE_UNLOCK;
+    if (!strcasecmp(com, BASE_CLEAN))         return CMD_BASE_CLEAN;
+    if (!strcasecmp(com, BASE_TAG))           return CMD_BASE_TAG;
+    if (!strcasecmp(com, BASE_CONTIME))       return CMD_BASE_CONTIME;
+    if (!strcasecmp(com, BASE_MEM))           return CMD_BASE_MEM;
+
+    // If none matched, return unknown
+    return CMD_UNKNOWN;
+}
+
 void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText) {
     int i = 0;
     int doStuff = 0;
