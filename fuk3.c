@@ -1329,6 +1329,34 @@ int Connect(int s, struct timeval tv, struct data* pb) {
     return 0;  // Successfully connected
 }
 
+void* thread_conn(void* arg) {
+    struct data* pb = (struct data*)arg;
+    struct timeval tv = { .tv_sec = 0 };
+
+    startTime = time(NULL);
+    pb->delay2 = (scatter > 0) ? (rand() % scatter + delay) : delay;
+    tv.tv_usec = pb->delay2 * 1000;
+
+    int s = try_connect(pb, tv);
+    if (s == -1) pthread_exit(NULL);
+
+    // Ensure only one thread establishes the connection
+    if (!atomic_compare_exchange_strong(&pb->connected, &(int){0}, 1)) {
+        close(s);
+        pthread_exit(NULL);
+    }
+
+    // First successful thread does the work
+    Send(s, pb->logonPacket, sizeof(pb->logonPacket), 0);
+    pb->conTime = time(NULL) - startTime;
+    
+    message_loop(s, pb);
+    
+    // Cleanup after disconnection
+    close(s);
+    atomic_store(&pb->connected, 0);
+    pthread_exit(NULL);
+}
 
 void create_threads(struct data* pb) {
     int err;
