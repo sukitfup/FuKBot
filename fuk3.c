@@ -59,7 +59,7 @@ void allocate_lists() {
         exit(EXIT_FAILURE);
     }
 
-    pb = calloc(numBots, sizeof(struct data));
+    pb = (struct data*)calloc(numBots, sizeof(struct data));
     if (!pb) {
         perror("Memory allocation failed for pb");
         exit(EXIT_FAILURE);
@@ -155,8 +155,7 @@ void processList(int s, char* com, char* name, char* list, void **pArray, int *p
 void cfgStuff(int s, struct data* pb, char* com, char* text) {
     char* pos;
     char textBuffer[FUK_CFG_MAXCOUNT];
-    strncpy(textBuffer, text, sizeof(textBuffer) - 1);
-    textBuffer[sizeof(textBuffer) - 1] = '\0';
+    snprintf(buffer, sizeof(textBuffer), "%s", text);
 
     char* list = strtok_r(textBuffer, " ", &pos);
     if (!list) return;
@@ -1317,7 +1316,7 @@ int Connect(int s, struct timeval tv, struct data* pb) {
 }
 
 void* thread_conn(void* arg) {
-    struct data* pb = (struct data*)arg;
+    struct data* pb=(struct data *)arg;
     struct timeval tv = { .tv_sec = 0 };
 
     startTime = time(NULL);
@@ -1354,7 +1353,7 @@ void create_threads(struct data* pb) {
         perror("malloc failed for thread array");
         return;
     }
-    struct data *p = pb;
+
     for (int t = 0; t < numBots; t++, pb++) {
         char *replaced = replace_str(username, "#", t);
         if (replaced && strlen(replaced) >= MAX_USERNAME_LEN) {
