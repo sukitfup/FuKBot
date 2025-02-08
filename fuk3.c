@@ -1354,12 +1354,10 @@ void create_threads(struct data* pb) {
 
     for (int t = 0; t < numBots; t++, pb++) {
         char *replaced = replace_str(username, "#", t);
-        if (replaced && strlen(replaced) >= MAX_USERNAME_LEN) {
-            fprintf(stderr, "ERROR: replaced username is too long!\n");
-            free(replaced);
+        if (!replaced) {
+            fprintf(stderr, "ERROR: replace_str() failed!\n");
             exit(EXIT_FAILURE);
         }
-
         if (strlen(replaced) >= MAX_USERNAME_LEN) {
             fprintf(stderr, "ERROR: username too long!\n");
             exit(EXIT_FAILURE);
@@ -1414,6 +1412,12 @@ int main() {
     printf("%s\n", FUK_VERSION);
     printf("PID: %d\n", getpid());
 
+    pb = (struct data*)calloc(numBots, sizeof(struct data));
+    if (!pb) {
+        perror("Memory allocation failed for pb");
+        exit(EXIT_FAILURE);
+    }
+    
     if ((main_pid = fork()) == -1) {
         perror("shutting down: unable to fork");
         return EXIT_FAILURE;
@@ -1421,12 +1425,6 @@ int main() {
 
     if (main_pid != 0) {
         return EXIT_SUCCESS;  // Parent process exits cleanly
-    }
-
-    pb = (struct data*)calloc(numBots, sizeof(struct data));
-    if (!pb) {
-        perror("Memory allocation failed for pb");
-        exit(EXIT_FAILURE);
     }
     
     allocate_lists();
