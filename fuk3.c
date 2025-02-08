@@ -14,18 +14,22 @@ int Send(int s, const char* lpszFmt, ...) {
 }
 
 char *replace_str(const char *str, const char *orig, int rep) {
-    char *p = strstr(str, orig);
-    if (!p) return str ? strdup(str) : strdup("");  // Always return a valid pointer
+    if (!str || !orig) return NULL;
 
-    // Ensure buffer size does not exceed predefined MAX_USERNAME_LEN
-    size_t new_size = MAX_USERNAME_LEN; // Use the defined size instead of guessing
-    char *buffer = calloc(new_size, sizeof(char));
-    if (!buffer) return NULL;  // Handle allocation failure
+    char *p = strstr(str, orig);
+    if (!p) return strdup(str);  // Return a copy of original string
+
+    size_t orig_len = strlen(orig);
+    size_t rep_len = snprintf(NULL, 0, "%d", rep);  // Calculate length of replacement
+    size_t new_size = strlen(str) - orig_len + rep_len + 1;  // Compute final required size
+
+    char *buffer = malloc(new_size);
+    if (!buffer) return NULL;
 
     size_t prefix_len = p - str;
-    snprintf(buffer, new_size, "%.*s%d%s", (int)prefix_len, str, rep, p + strlen(orig));
+    snprintf(buffer, new_size, "%.*s%d%s", (int)prefix_len, str, rep, p + orig_len);
 
-    return buffer;  // Must be freed by caller
+    return buffer;  // Caller must free this
 }
 
 void msleep(unsigned long milliseconds) {
