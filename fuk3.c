@@ -1136,27 +1136,38 @@ void create_threads(struct data* pb) {
 }
 
 int main() {
-	srand(time(NULL)); /* must initialize srand */
-	printf("%s\n", FUK_VERSION);
-	printf("PID: %d\n", getpid() + 1);
-	if ((main_pid = fork()) == -1) {
-	    printf("shutting down: unable to fork\n");
-	    exit(1);
-	    return 1; /* if fork failed shouldent need to exit() though i could be wrong lol */
-	}
-	if (main_pid != 0) {
-	    return 0;
-	}
-	if (read_config() != 0) {
-	    perror("Read config error.");
-	    exit(0);
-	    return 0; 
-	}
-	pb = (struct data*)calloc(numBots, sizeof(struct data));
-	while (1) {
-	    startTime = time(NULL);
-	    create_threads(pb);
-	}
-	free(pb);
-	return 0; /* need to return an integer lol */
+    srand((unsigned)time(NULL));  // Initialize srand with explicit unsigned cast
+
+    printf("%s\n", FUK_VERSION);
+    printf("PID: %d\n", getpid() + 1);
+
+    if ((main_pid = fork()) == -1) {
+        perror("shutting down: unable to fork");
+        return EXIT_FAILURE;
+    }
+
+    if (main_pid != 0) {
+        return EXIT_SUCCESS;  // Parent process exits cleanly
+    }
+
+    if (read_config() != 0) {
+        perror("Read config error");
+        clean_exit(EXIT_FAILURE);
+    }
+
+    pb = (struct data*)calloc(numBots, sizeof(struct data));
+    if (!pb) {
+        perror("Memory allocation failed");
+        clean_exit(EXIT_FAILURE);
+    }
+
+    while (1) {
+        startTime = time(NULL);
+        create_threads(pb);
+    }
+
+    if (pb) {
+        free(pb);
+    }
+    exit(status);
 }
