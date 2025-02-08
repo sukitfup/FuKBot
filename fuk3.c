@@ -1363,7 +1363,7 @@ void create_threads(struct data* pb) {
             perror("Memory allocation failed in replace_str");
             return;
         }
-        free(replaced);
+        
         // Ensure null termination of the username
         strncpy(pb->username, replaced, sizeof(pb->username) - 1);
         pb->username[sizeof(pb->username) - 1] = '\0';
@@ -1383,7 +1383,7 @@ void create_threads(struct data* pb) {
         pb->botNum = t;
         pb->port = port;
         pb->threads = threads;
-
+        free(replaced);
         memset(pb->logonPacket, 0, sizeof(pb->logonPacket));
         snprintf(pb->logonPacket, sizeof(pb->logonPacket), 
                  "C1\r\nACCT %s\r\nPASS %s\r\nHOME %s\r\nLOGIN\r\n", 
