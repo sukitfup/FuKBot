@@ -13,6 +13,13 @@ void set_nonblock(int fd) {
 	fcntl(fd, F_SETFL, new_option);
 }
 
+void clean_exit(int status) {
+    if (pb) {
+        free(pb);
+    }
+    exit(status);
+}
+
 void cfgStuff(int s, struct data* pb, char* com, char* text) {
     int x;
     int once = 1;
@@ -1166,8 +1173,5 @@ int main() {
         create_threads(pb);
     }
 
-    if (pb) {
-        free(pb);
-    }
-    exit(status);
+    clean_exit(EXIT_SUCCESS);
 }
