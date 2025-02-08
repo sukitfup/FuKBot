@@ -13,17 +13,6 @@ int Send(int s, const char* lpszFmt, ...) {
     return send(s, szOutStr, strlen(szOutStr), 0);
 }
 
-char *replace_str(char *str, char *orig, int rep) {
-  static char buffer[20];
-  char *p;
-  if(!(p = strstr(str, orig)))
-    return str;
-  strncpy(buffer, str, p-str);
-  buffer[p-str] = '\0';
-  sprintf(buffer+(p-str), "%d%s", rep, p+strlen(orig));
-  return buffer;
-}
-
 void msleep(unsigned long milliseconds) {
     struct timespec ts;
     ts.tv_sec = milliseconds / 1000;
@@ -1334,8 +1323,20 @@ void* thread_conn(void* arg) {
     pthread_exit(NULL);
 }
 
+char *replace_str(char *str, char *orig, int rep) {
+  static char buffer[20];
+  char *p;
+  if(!(p = strstr(str, orig)))
+    return str;
+  strncpy(buffer, str, p-str);
+  buffer[p-str] = '\0';
+  sprintf(buffer+(p-str), "%d%s", rep, p+strlen(orig));
+  return buffer;
+}
+
 void create_threads(struct data *pb) {
     int err;
+    int i = 0;
     int numThreads = numBots * threads;
     pthread_t thread[numThreads];
     if (!thread) {
