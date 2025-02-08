@@ -17,14 +17,15 @@ char *replace_str(const char *str, const char *orig, int rep) {
     char *p = strstr(str, orig);
     if (!p) return str ? strdup(str) : strdup("");  // Always return a valid pointer
 
-    size_t new_size = strlen(str) - strlen(orig) + 20; // Estimate buffer size
-    char *buffer = malloc(new_size);
+    // Ensure buffer size does not exceed predefined MAX_USERNAME_LEN
+    size_t new_size = MAX_USERNAME_LEN; // Use the defined size instead of guessing
+    char *buffer = calloc(new_size, sizeof(char));
     if (!buffer) return NULL;  // Handle allocation failure
 
     size_t prefix_len = p - str;
     snprintf(buffer, new_size, "%.*s%d%s", (int)prefix_len, str, rep, p + strlen(orig));
 
-    return buffer;
+    return buffer;  // Must be freed by caller
 }
 
 void msleep(unsigned long milliseconds) {
@@ -1372,58 +1373,75 @@ void create_threads(struct data* pb) {
         return;
     }
 
-    // Create and configure each bot
+void create_threads(struct data* pb) {
+    int err;
+    int i = 0;
+    int numThreads = numBots * threads;
+
+    pthread_t *thread = malloc(numThreads * sizeof(pthread_t));
+    if (!thread) {
+        perror("malloc failed for thread array");
+        return;
+    }
+
     for (int t = 0; t < numBots; t++, pb++) {  
         char *replaced = replace_str(username, "#", t);
         if (!replaced) {
             perror("Memory allocation failed in replace_str");
+            free(thread);
             return;
         }
-        
-        // Ensure null termination of the username
-        strncpy(pb->username, replaced, sizeof(pb->username) - 1);
-        pb->username[sizeof(pb->username) - 1] = '\0';
 
-        strncpy(pb->password, password, sizeof(pb->password) - 1);
-        pb->password[sizeof(pb->password) - 1] = '\0';
+        // Ensure we never exceed MAX_USERNAME_LEN
+        if (strlen(replaced) >= MAX_USERNAME_LEN) {
+            fprintf(stderr, "Error: Username too long after replacement! [%s]\n", replaced);
+            free(replaced);
+            free(thread);
+            return;
+        }
 
-        strncpy(pb->channel, channel, sizeof(pb->channel) - 1);
-        pb->channel[sizeof(pb->channel) - 1] = '\0';
+        // Copy safely
+        strncpy(pb->username, replaced, MAX_USERNAME_LEN - 1);
+        pb->username[MAX_USERNAME_LEN - 1] = '\0'; // Null terminate safely
 
-        strncpy(pb->server, server, sizeof(pb->server) - 1);
-        pb->server[sizeof(pb->server) - 1] = '\0';
+        free(replaced); // Free allocated memory
 
-        strncpy(pb->trigger, trigger, sizeof(pb->trigger) - 1);
-        pb->trigger[sizeof(pb->trigger) - 1] = '\0';
+        // Now ensure other fields are copied correctly with size limits
+        strncpy(pb->password, password, MAX_PASSWORD_LEN - 1);
+        pb->password[MAX_PASSWORD_LEN - 1] = '\0';
+
+        strncpy(pb->channel, channel, MAX_CHANNEL_LEN - 1);
+        pb->channel[MAX_CHANNEL_LEN - 1] = '\0';
+
+        strncpy(pb->server, server, MAX_SERVER_LEN - 1);
+        pb->server[MAX_SERVER_LEN - 1] = '\0';
+
+        strncpy(pb->trigger, trigger, MAX_TRIGGER_LEN - 1);
+        pb->trigger[MAX_TRIGGER_LEN - 1] = '\0';
 
         pb->botNum = t;
         pb->port = port;
         pb->threads = threads;
-        free(replaced);
-        memset(pb->logonPacket, 0, sizeof(pb->logonPacket));
-        snprintf(pb->logonPacket, sizeof(pb->logonPacket), 
-                 "C1\r\nACCT %s\r\nPASS %s\r\nHOME %s\r\nLOGIN\r\n", 
+
+        // Ensure logonPacket is within limit
+        snprintf(pb->logonPacket, MAX_LOGON_PACKET_LEN,
+                 "C1\r\nACCT %s\r\nPASS %s\r\nHOME %s\r\nLOGIN\r\n",
                  pb->username, pb->password, pb->channel);
-
-        // Create threads for each bot
-        for (int z = 0; z < threads; z++, i++) {
-            err = pthread_create(&thread[i], NULL, thread_conn, pb);
-            if (err != 0) {
-                fprintf(stderr, "pthread_create failed: %s\n", strerror(err));
-            }
-        }
     }
 
-    // Join threads
+    // Start threads safely
     for (int t = 0; t < numThreads; t++) {
-        err = pthread_join(thread[t], NULL);
+        err = pthread_create(&thread[t], NULL, thread_conn, pb);
         if (err != 0) {
-            fprintf(stderr, "pthread_join failed: %s\n", strerror(err));
+            fprintf(stderr, "pthread_create failed: %s\n", strerror(err));
         }
     }
 
-    free(thread); // Free dynamically allocated memory
-    msleep(conWait * 1000);
+    for (int t = 0; t < numThreads; t++) {
+        pthread_join(thread[t], NULL);
+    }
+
+    free(thread); // Free thread array
 }
 
 int main() {
