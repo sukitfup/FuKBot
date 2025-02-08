@@ -193,7 +193,7 @@ void OnUserFlags(int s, struct data* pb, char* szSpeaker, u_long uFlags) {
     }
 }
 
-static enum CommandID resolve_command(const char* com) {
+CommandID resolve_command(const char* com) {
     if (!com) return CMD_UNKNOWN;
 
     if (!strcasecmp(com, CFGSTUFF_LIST))      return CMD_CFGSTUFF_LIST;
