@@ -43,20 +43,25 @@ void set_nonblock(int s) {
 }
 
 void allocate_lists() {
-    master = malloc(sizeof(masterList) * masterSz);
-    safe = malloc(sizeof(safeList) * safeSz);
-    shit = malloc(sizeof(shitList) * shitSz);
-    des = malloc(sizeof(desList) * desSz);
+    masterSz = masterSz > 0 ? masterSz : 1;
+    safeSz = safeSz > 0 ? safeSz : 1;
+    shitSz = shitSz > 0 ? shitSz : 1;
+    desSz = desSz > 0 ? desSz : 1;
+
+    master = calloc(masterSz, sizeof(masterList));
+    safe = calloc(safeSz, sizeof(safeList));
+    shit = calloc(shitSz, sizeof(shitList));
+    des = calloc(desSz, sizeof(desList));
 
     if (!master || !safe || !shit || !des) {
         perror("Memory allocation failed for lists");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
-    pb = malloc(sizeof(struct data));
+    pb = calloc(1, sizeof(struct data));
     if (!pb) {
         perror("Memory allocation failed for pb");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 }
 
@@ -1325,38 +1330,8 @@ int Connect(int s, struct timeval tv, struct data* pb) {
 }
 
 
-void* thread_conn(void* arg) {
-    struct data* pb = (struct data*)arg;
-    struct timeval tv = { .tv_sec = 0 };
-
-    startTime = time(NULL);
-    pb->delay2 = (scatter > 0) ? (rand() % scatter + delay) : delay;
-    tv.tv_usec = pb->delay2 * 1000;
-
-    int s = try_connect(pb, tv);
-    if (s == -1) pthread_exit(NULL);
-
-    // Ensure only one thread establishes the connection
-    if (!atomic_compare_exchange_strong(&pb->connected, &(int){0}, 1)) {
-        close(s);
-        pthread_exit(NULL);
-    }
-
-    // First successful thread does the work
-    Send(s, pb->logonPacket, sizeof(pb->logonPacket), 0);
-    pb->conTime = time(NULL) - startTime;
-    
-    message_loop(s, pb);
-    
-    // Cleanup after disconnection
-    close(s);
-    atomic_store(&pb->connected, 0);
-    pthread_exit(NULL);
-}
-
 void create_threads(struct data* pb) {
     int err;
-    int i = 0;
     int numThreads = numBots * threads;
 
     pthread_t *thread = malloc(numThreads * sizeof(pthread_t));
@@ -1373,21 +1348,14 @@ void create_threads(struct data* pb) {
             return;
         }
 
-        // Ensure we never exceed MAX_USERNAME_LEN
-        if (strlen(replaced) >= MAX_USERNAME_LEN) {
-            fprintf(stderr, "Error: Username too long after replacement! [%s]\n", replaced);
-            free(replaced);
-            free(thread);
-            return;
-        }
+        // Safe strncpy with explicit length check
+        size_t len = strnlen(replaced, MAX_USERNAME_LEN - 1);
+        strncpy(pb->username, replaced, len);
+        pb->username[len] = '\0';
 
-        // Copy safely
-        strncpy(pb->username, replaced, MAX_USERNAME_LEN - 1);
-        pb->username[MAX_USERNAME_LEN - 1] = '\0'; // Null terminate safely
+        free(replaced);
 
-        free(replaced); // Free allocated memory
-
-        // Now ensure other fields are copied correctly with size limits
+        // Ensure other fields are safe
         strncpy(pb->password, password, MAX_PASSWORD_LEN - 1);
         pb->password[MAX_PASSWORD_LEN - 1] = '\0';
 
@@ -1404,7 +1372,6 @@ void create_threads(struct data* pb) {
         pb->port = port;
         pb->threads = threads;
 
-        // Ensure logonPacket is within limit
         snprintf(pb->logonPacket, MAX_LOGON_PACKET_LEN,
                  "C1\r\nACCT %s\r\nPASS %s\r\nHOME %s\r\nLOGIN\r\n",
                  pb->username, pb->password, pb->channel);
@@ -1422,7 +1389,7 @@ void create_threads(struct data* pb) {
         pthread_join(thread[t], NULL);
     }
 
-    free(thread); // Free thread array
+    free(thread);  // Free allocated memory
 }
 
 int main() {
