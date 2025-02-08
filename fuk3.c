@@ -777,21 +777,32 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
 }
 
 void OnChannel(int s, struct data* pb, char* szEventText) {
-    while ((*szEventText == ' '))
-        ++szEventText;
-    memset(pb->currChan, '\0', sizeof(pb->currChan));
-    strcpy(pb->currChan, szEventText);
+    if (!pb || !szEventText) return;  // Prevent NULL pointer dereference
+
+    // Trim leading spaces safely
+    while (*szEventText == ' ') ++szEventText;
+
+    // Ensure bounded copy to avoid overflow
+    memset(pb->currChan, 0, sizeof(pb->currChan));
+    strncpy(pb->currChan, szEventText, sizeof(pb->currChan) - 1);
+    pb->currChan[sizeof(pb->currChan) - 1] = '\0';  // Ensure null termination
+
     if (!strcasecmp(szEventText, pb->channel)) {
         pb->chanham = 0;
-        Send(s, SERVER_COMMAND_0, SERVER_PLACE);
+        Send(s, SERVER_COMMAND_0, SERVER_PLACE, NULL);
         msleep(3000);
     }
     else if (!strcasecmp(szEventText, CHANNEL_VOID)) {
         pb->chanham = 1;
-        Send(s, SERVER_COMMAND_0, SERVER_PLACE);
+        Send(s, SERVER_COMMAND_0, SERVER_PLACE, NULL);
         msleep(3000);
-        Send(s, SERVER_COMMAND_1, SERVER_JOIN, backup);
-        msleep(3000);
+
+        // Ensure 'backup' is properly initialized before use
+        extern char backup[MAX_CHANNEL_LEN];  // Assumption: backup is declared elsewhere
+        if (backup[0] != '\0') {  // Ensure backup is not empty before using it
+            Send(s, SERVER_COMMAND_1, SERVER_JOIN, backup);
+            msleep(3000);
+        }
     }
 }
 
