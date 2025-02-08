@@ -934,102 +934,106 @@ int save_cfg(struct data* pb) {
 }
 
 int read_config() {
-    FILE* cfg;
-    int i = 0;
-    int j = 0;
-    int k = 0;
-    int d = 0;
-    int line = 0;
-    cfg = fopen(FUK_CFG, FUK_CFG_READBINARY);
+    FILE *cfg = fopen(FUK_CFG, FUK_CFG_READBINARY);
     if (!cfg) {
         printf(FUK_CFG_ERROR, FUK_CFG);
         return -1;
     }
-    else {
-        char r[1024];
-        while (fgets(r, 1024, cfg)) {
-            line++;
-            strtok(r, "\r\n");
-            if (!memcmp(r, FUK_CFG_USERNAME, strlen(FUK_CFG_USERNAME))) {
-                memset(username, '\0', sizeof(username));
-                strcpy(username, (r + strlen(FUK_CFG_USERNAME)));
-            }
-            else if (!memcmp(r, FUK_CFG_PASSWORD, strlen(FUK_CFG_PASSWORD))) {
-                memset(password, '\0', sizeof(password));
-                strcpy(password, (r + strlen(FUK_CFG_PASSWORD)));
-            }
-            else if (!memcmp(r, FUK_CFG_HOME, strlen(FUK_CFG_HOME))) {
-                memset(channel, '\0', sizeof(channel));
-                strcpy(channel, (r + strlen(FUK_CFG_HOME)));
-            }
-            else if (!memcmp(r, FUK_CFG_SERVER, strlen(FUK_CFG_SERVER))) {
-                memset(server, '\0', sizeof(server));
-                strcpy(server, (r + strlen(FUK_CFG_SERVER)));
-            }
-            else if (!memcmp(r, FUK_CFG_PORT, strlen(FUK_CFG_PORT))) {
-                port = atoi(r + strlen(FUK_CFG_PORT));
-            }
-            else if (!memcmp(r, FUK_CFG_BIND, strlen(FUK_CFG_BIND))) {
-                memset(bindaddr, '\0', sizeof(server));
-                strcpy(bindaddr, (r + strlen(FUK_CFG_BIND)));
-            }
-            else if (!memcmp(r, FUK_CFG_TRIGGER, strlen(FUK_CFG_TRIGGER))) {
-                memset(trigger, '\0', sizeof(trigger));
-                strcpy(trigger, (r + strlen(FUK_CFG_TRIGGER)));
-            }
-            else if (!memcmp(r, FUK_CFG_THREADS, strlen(FUK_CFG_THREADS))) {
-                threads = atoi(r + strlen(FUK_CFG_THREADS));
-            }
-            else if (!memcmp(r, FUK_CFG_DELAY, strlen(FUK_CFG_DELAY))) {
-                delay = atoi(r + strlen(FUK_CFG_DELAY));
-            }
-            else if (!memcmp(r, FUK_CFG_SCATTER, strlen(FUK_CFG_SCATTER))) {
-                scatter = atoi(r + strlen(FUK_CFG_SCATTER));
-            }
-            else if (!memcmp(r, FUK_CFG_BACKUPCHAN, strlen(FUK_CFG_BACKUPCHAN))) {
-                memset(backup, '\0', sizeof(backup));
-                strcpy(backup, (r + strlen(FUK_CFG_BACKUPCHAN)));
-            }
-            else if (!memcmp(r, FUK_CFG_TOPIC, strlen(FUK_CFG_TOPIC))) {
-                memset(topic, '\0', sizeof(topic));
-                strcpy(topic, (r + strlen(FUK_CFG_TOPIC)));
-            }
-            else if (!memcmp(r, FUK_CFG_BANWAIT, strlen(FUK_CFG_BANWAIT))) {
-                banWait = atoi(r + strlen(FUK_CFG_BANWAIT));
-            }
-            else if (!memcmp(r, FUK_CFG_CONWAIT, strlen(FUK_CFG_CONWAIT))) {
-                conWait = atoi(r + strlen(FUK_CFG_CONWAIT));
-            }
-            else if (!memcmp(r, FUK_CFG_NUMBOTS, strlen(FUK_CFG_NUMBOTS))) {
-                numBots = atoi(r + strlen(FUK_CFG_NUMBOTS));
-            }
-            else if (!memcmp(r, FUK_CFG_MASTER, strlen(FUK_CFG_MASTER))) {
-                master = (masterList*)reallocarray(master, ++masterSz, sizeof(masterList));
-                memset(master[i].id, '\0', sizeof(master[i].id));
-                strcpy(master[i].id, (r + strlen(FUK_CFG_MASTER)));
-                i++;
-            }
-            else if (!memcmp(r, FUK_CFG_SAFE, strlen(FUK_CFG_SAFE))) {
-                safe = (safeList*)reallocarray(safe, ++safeSz, sizeof(safeList));
-                memset(safe[j].id, '\0', sizeof(safe[j].id));
-                strcpy(safe[j].id, (r + strlen(FUK_CFG_SAFE)));
-                j++;
-            }
-            else if (!memcmp(r, FUK_CFG_SHIT, strlen(FUK_CFG_SHIT))) {
-                shit = (shitList*)reallocarray(shit, ++shitSz, sizeof(shitList));
-                memset(shit[k].id, '\0', sizeof(shit[k].id));
-                strcpy(shit[k].id, (r + strlen(FUK_CFG_SHIT)));
-                k++;
-            }
-            else if (!memcmp(r, FUK_CFG_DES, strlen(FUK_CFG_DES))) {
-                des = (desList*)reallocarray(des, ++desSz, sizeof(desList));
-                memset(des[d].id, '\0', sizeof(des[d].id));
-                strcpy(des[d].id, (r + strlen(FUK_CFG_DES)));
-                d++;
-            }
+
+    char r[MAX_LINE_SIZE];
+    size_t i = 0, j = 0, k = 0, d = 0;
+
+    while (fgets(r, MAX_LINE_SIZE, cfg)) {
+        strtok(r, "\r\n"); // Remove newlines
+
+        if (!memcmp(r, FUK_CFG_USERNAME, strlen(FUK_CFG_USERNAME))) {
+            strncpy(username, r + strlen(FUK_CFG_USERNAME), sizeof(username) - 1);
+            username[sizeof(username) - 1] = '\0';
         }
-        fclose(cfg);
-    } 
+        else if (!memcmp(r, FUK_CFG_PASSWORD, strlen(FUK_CFG_PASSWORD))) {
+            strncpy(password, r + strlen(FUK_CFG_PASSWORD), sizeof(password) - 1);
+            password[sizeof(password) - 1] = '\0';
+        }
+        else if (!memcmp(r, FUK_CFG_HOME, strlen(FUK_CFG_HOME))) {
+            strncpy(channel, r + strlen(FUK_CFG_HOME), sizeof(channel) - 1);
+            channel[sizeof(channel) - 1] = '\0';
+        }
+        else if (!memcmp(r, FUK_CFG_SERVER, strlen(FUK_CFG_SERVER))) {
+            strncpy(server, r + strlen(FUK_CFG_SERVER), sizeof(server) - 1);
+            server[sizeof(server) - 1] = '\0';
+        }
+        else if (!memcmp(r, FUK_CFG_PORT, strlen(FUK_CFG_PORT))) {
+            port = atoi(r + strlen(FUK_CFG_PORT));
+        }
+        else if (!memcmp(r, FUK_CFG_BIND, strlen(FUK_CFG_BIND))) {
+            strncpy(bindaddr, r + strlen(FUK_CFG_BIND), sizeof(bindaddr) - 1);
+            bindaddr[sizeof(bindaddr) - 1] = '\0';
+        }
+        else if (!memcmp(r, FUK_CFG_TRIGGER, strlen(FUK_CFG_TRIGGER))) {
+            strncpy(trigger, r + strlen(FUK_CFG_TRIGGER), sizeof(trigger) - 1);
+            trigger[sizeof(trigger) - 1] = '\0';
+        }
+        else if (!memcmp(r, FUK_CFG_THREADS, strlen(FUK_CFG_THREADS))) {
+            threads = atoi(r + strlen(FUK_CFG_THREADS));
+        }
+        else if (!memcmp(r, FUK_CFG_DELAY, strlen(FUK_CFG_DELAY))) {
+            delay = atoi(r + strlen(FUK_CFG_DELAY));
+        }
+        else if (!memcmp(r, FUK_CFG_SCATTER, strlen(FUK_CFG_SCATTER))) {
+            scatter = atoi(r + strlen(FUK_CFG_SCATTER));
+        }
+        else if (!memcmp(r, FUK_CFG_BACKUPCHAN, strlen(FUK_CFG_BACKUPCHAN))) {
+            strncpy(backup, r + strlen(FUK_CFG_BACKUPCHAN), sizeof(backup) - 1);
+            backup[sizeof(backup) - 1] = '\0';
+        }
+        else if (!memcmp(r, FUK_CFG_TOPIC, strlen(FUK_CFG_TOPIC))) {
+            strncpy(topic, r + strlen(FUK_CFG_TOPIC), sizeof(topic) - 1);
+            topic[sizeof(topic) - 1] = '\0';
+        }
+        else if (!memcmp(r, FUK_CFG_BANWAIT, strlen(FUK_CFG_BANWAIT))) {
+            banWait = atoi(r + strlen(FUK_CFG_BANWAIT));
+        }
+        else if (!memcmp(r, FUK_CFG_CONWAIT, strlen(FUK_CFG_CONWAIT))) {
+            conWait = atoi(r + strlen(FUK_CFG_CONWAIT));
+        }
+        else if (!memcmp(r, FUK_CFG_NUMBOTS, strlen(FUK_CFG_NUMBOTS))) {
+            numBots = atoi(r + strlen(FUK_CFG_NUMBOTS));
+        }
+        else if (!memcmp(r, FUK_CFG_MASTER, strlen(FUK_CFG_MASTER))) {
+            masterList *temp = (masterList *)realloc(master, (masterSz + 1) * sizeof(masterList));
+            if (!temp) break; // Memory allocation failed
+            master = temp;
+            strncpy(master[masterSz].id, r + strlen(FUK_CFG_MASTER), sizeof(master[masterSz].id) - 1);
+            master[masterSz].id[sizeof(master[masterSz].id) - 1] = '\0';
+            masterSz++;
+        }
+        else if (!memcmp(r, FUK_CFG_SAFE, strlen(FUK_CFG_SAFE))) {
+            safeList *temp = (safeList *)realloc(safe, (safeSz + 1) * sizeof(safeList));
+            if (!temp) break;
+            safe = temp;
+            strncpy(safe[safeSz].id, r + strlen(FUK_CFG_SAFE), sizeof(safe[safeSz].id) - 1);
+            safe[safeSz].id[sizeof(safe[safeSz].id) - 1] = '\0';
+            safeSz++;
+        }
+        else if (!memcmp(r, FUK_CFG_SHIT, strlen(FUK_CFG_SHIT))) {
+            shitList *temp = (shitList *)realloc(shit, (shitSz + 1) * sizeof(shitList));
+            if (!temp) break;
+            shit = temp;
+            strncpy(shit[shitSz].id, r + strlen(FUK_CFG_SHIT), sizeof(shit[shitSz].id) - 1);
+            shit[shitSz].id[sizeof(shit[shitSz].id) - 1] = '\0';
+            shitSz++;
+        }
+        else if (!memcmp(r, FUK_CFG_DES, strlen(FUK_CFG_DES))) {
+            desList *temp = (desList *)realloc(des, (desSz + 1) * sizeof(desList));
+            if (!temp) break;
+            des = temp;
+            strncpy(des[desSz].id, r + strlen(FUK_CFG_DES), sizeof(des[desSz].id) - 1);
+            des[desSz].id[sizeof(des[desSz].id) - 1] = '\0';
+            desSz++;
+        }
+    }
+
+    fclose(cfg);
     return 0;
 }
       
