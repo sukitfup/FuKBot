@@ -321,6 +321,7 @@
 #define MAX_TAG_LEN 11
 #define MAX_LOGON_PACKET_LEN 100
 #define MAX_LIST_LEN 21
+#define SEND_BUFFER_SIZE 512
 
 typedef struct {
     char id[MAX_LIST_LEN];
