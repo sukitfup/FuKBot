@@ -15,7 +15,7 @@ int Send(int s, const char* lpszFmt, ...) {
 
 char *replace_str(const char *str, const char *orig, int rep) {
     char *p = strstr(str, orig);
-    if (!p) return strdup(str);  // Return a copy if no match is found
+    if (!p) return str ? strdup(str) : strdup("");  // Always return a valid pointer
 
     size_t new_size = strlen(str) - strlen(orig) + 20; // Estimate buffer size
     char *buffer = malloc(new_size);
@@ -60,26 +60,10 @@ void allocate_lists() {
 }
 
 void free_config() {
-    if (master) {
-        free(master);
-        master = NULL;
-        masterSz = 0;
-    }
-    if (safe) {
-        free(safe);
-        safe = NULL;
-        safeSz = 0;
-    }
-    if (shit) {
-        free(shit);
-        shit = NULL;
-        shitSz = 0;
-    }
-    if (des) {
-        free(des);
-        des = NULL;
-        desSz = 0;
-    }
+    if (master) { free(master); master = NULL; }
+    if (safe) { free(safe); safe = NULL; }
+    if (shit) { free(shit); shit = NULL; }
+    if (des) { free(des); des = NULL; }
 }
 
 void clean_exit(int status) {
@@ -151,7 +135,7 @@ void processList(int s, char* com, char* name, char* list, void* array, int* siz
     }
     // Handle adding a new entry safely
     if (!strcasecmp(CFGSTUFF_ADD, com) && name != NULL) {
-        masterList* temp = (masterList*)reallocarray(listArray, (*size + 1), sizeof(masterList));
+        masterList* temp = reallocarray(listArray, (*size - 1), sizeof(masterList));
         if (temp) {
             listArray = temp;  // Update pointer only if realloc succeeds
             (*size)++;         // Increment size after successful allocation
@@ -175,7 +159,10 @@ void cfgStuff(int s, struct data* pb, char* com, char* text) {
     textBuffer[sizeof(textBuffer) - 1] = '\0';
 
     char* list = strtok_r(textBuffer, " ", &pos);
+    if (!list) return;  // Ensure valid pointer
+    
     char* name = strtok_r(NULL, " ", &pos);
+    if (!name) return;  // Ensure valid pointer
 
     if (strstr(list, CFGSTUFF_MASTER)) {
         processList(s, com, name, list, (void*)master, &masterSz, CFGSTUFF_MASTER);
@@ -864,7 +851,8 @@ void OnChannel(int s, struct data* pb, char* szEventText) {
 }
 
 void OnInfo(int s, struct data *pb, char *szEventText) {
-    char szEventTextCopy[strlen(szEventText) + 1];
+    if (!szEventText) return;
+    char szEventTextCopy[512];  // Allocate fixed buffer
     strncpy(szEventTextCopy, szEventText, sizeof(szEventTextCopy) - 1);
     szEventTextCopy[sizeof(szEventTextCopy) - 1] = '\0';
 
