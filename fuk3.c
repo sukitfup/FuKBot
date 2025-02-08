@@ -7,10 +7,11 @@ void msleep(unsigned long milliseconds) {
     nanosleep(&ts, NULL);
 }
 
-void set_nonblock(int fd) {
-	int old_option = fcntl(fd, F_GETFL);
-	int new_option = old_option | O_NONBLOCK;
-	fcntl(fd, F_SETFL, new_option);
+void set_nonblock(int s) {
+    int flags = fcntl(s, F_GETFL, 0);
+    if (flags != -1) {
+        fcntl(s, F_SETFL, flags | O_NONBLOCK);
+    }
 }
 
 void clean_exit(int status) {
@@ -1033,44 +1034,63 @@ int read_config() {
 }
       
 int Connect(int s, struct timeval tv, struct data* pb) {
-	fd_set fdr, fdw;
-	int on = 1, err = 0, errlen = 4;
-	int sockinlen = 16;
-	struct sockaddr_in name2 = { AF_INET, 0, INADDR_ANY };
-	struct sockaddr_in name;
-	struct addrinfo hints, *res;
-	
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_STREAM;
-	
-	if (getaddrinfo(pb->server, NULL, &hints, &res) != 0) {
-	    return INVALID_SOCKET;
-	}
-	    
-	name.sin_family = AF_INET;
-	name.sin_port = htons(pb->port);
-	name.sin_addr = ((struct sockaddr_in *)res->ai_addr)->sin_addr;
-	    
-	inet_pton(AF_INET, bindaddr, &(name2.sin_addr));
-	if (bind(s, (const struct sockaddr*)&name2, sizeof(name2)) == INVALID_SOCKET) {
-	    freeaddrinfo(res);
-	    return INVALID_SOCKET;
-	}
-	
-	set_nonblock(s);
-	FD_ZERO(&fdr); FD_SET(s, &fdr); fdw = fdr;
-	connect(s, (struct sockaddr*)&name, sizeof(name));
-	select(s + 1, &fdr, &fdw, NULL, (struct timeval*)&tv);
-	
-	if (FD_ISSET(s, &fdw)) {
-	    getsockopt(s, SOL_SOCKET, SO_ERROR, &err, &errlen);
-	} else {
-	    err = -1;
-	}
-	
-	freeaddrinfo(res);
-	return err;
+    struct sockaddr_in bind_addr = { .sin_family = AF_INET };
+    struct sockaddr_in server_addr;
+    struct addrinfo hints = {0}, *res;
+    fd_set fdr, fdw;
+    int err = 0, errlen = sizeof(err);
+
+    // Resolve server address
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    
+    if (getaddrinfo(pb->server, NULL, &hints, &res) != 0) {
+        return -1;  // Address resolution failed
+    }
+
+    // Prepare server address
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(pb->port);
+    server_addr.sin_addr = ((struct sockaddr_in *)res->ai_addr)->sin_addr;
+
+    // Bind socket (optional, only if `bindaddr` is set)
+    if (bindaddr && inet_pton(AF_INET, bindaddr, &bind_addr.sin_addr) > 0) {
+        if (bind(s, (struct sockaddr*)&bind_addr, sizeof(bind_addr)) < 0) {
+            freeaddrinfo(res);
+            return -2;  // Binding failed
+        }
+    }
+
+    set_nonblock(s);
+
+    // Start non-blocking connection
+    connect(s, (struct sockaddr*)&server_addr, sizeof(server_addr));
+
+    // Use select to wait for connection
+    FD_ZERO(&fdr);
+    FD_ZERO(&fdw);
+    FD_SET(s, &fdr);
+    FD_SET(s, &fdw);
+
+    if (select(s + 1, &fdr, &fdw, NULL, &tv) <= 0) {
+        freeaddrinfo(res);
+        return -3;  // Timeout or error
+    }
+
+    // Check if connection was successful
+    if (FD_ISSET(s, &fdw)) {
+        getsockopt(s, SOL_SOCKET, SO_ERROR, &err, &errlen);
+        if (err != 0) {
+            freeaddrinfo(res);
+            return -4;  // Connection failed
+        }
+    } else {
+        freeaddrinfo(res);
+        return -5;  // Unexpected failure
+    }
+
+    freeaddrinfo(res);
+    return 0;  // Successfully connected
 }
 
 void* thread_conn(void* arg) {
