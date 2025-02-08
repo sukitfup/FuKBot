@@ -1359,18 +1359,6 @@ void create_threads(struct data* pb) {
     int i = 0;
     int numThreads = numBots * threads;
 
-    // Dynamically allocate the thread array to avoid stack overflow issues
-    pthread_t *thread = malloc(numThreads * sizeof(pthread_t));
-    if (!thread) {
-        perror("malloc failed for thread array");
-        return;
-    }
-
-void create_threads(struct data* pb) {
-    int err;
-    int i = 0;
-    int numThreads = numBots * threads;
-
     pthread_t *thread = malloc(numThreads * sizeof(pthread_t));
     if (!thread) {
         perror("malloc failed for thread array");
