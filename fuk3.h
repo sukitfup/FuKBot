@@ -362,7 +362,20 @@ void OnPing(int s, struct data* pb, char* szEventText);
 void Dispatch(int s, struct data* pb, char* szEventText);
 int Send(int s, const char* lpszFmt, ...); /* match vars */
 void message_loop(int s, struct data* pb);
-void msleep(unsigned long milisec);
+#ifdef _WIN32
+#include <windows.h>
+void msleep(unsigned long milisec) {
+    Sleep(milisec);
+}
+#else
+#include <time.h>
+void msleep(unsigned long milisec) {
+    struct timespec ts;
+    ts.tv_sec = milisec / 1000;
+    ts.tv_nsec = (milisec % 1000) * 1000000;
+    nanosleep(&ts, NULL);
+}
+#endif
 char* replace_str(char* str, char* orig, int rep);
 int save_cfg(struct data* pb);
 int read_config();
