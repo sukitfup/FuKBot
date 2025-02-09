@@ -1326,15 +1326,27 @@ void* thread_conn(void* arg) {
     pthread_exit(NULL);
 }
 
-char *replace_str(char *str, char *orig, int rep) {
-  static char buffer[MAX_CFG_LEN -1];
-  char *p;
-  if(!(p = strstr(str, orig)))
-    return str;
-  strncpy(buffer, str, p-str);
-  buffer[p-str] = '\0';
-  sprintf(buffer+(p-str), "%d%s", rep, p+strlen(orig));
-  return buffer;
+char *replace_str(const char *str, const char *orig, int rep) {
+    char *p = strstr(str, orig);
+    if (!p) return strdup(str);  // Return a copy if `orig` is not found
+
+    // Find length of the replacement number
+    int rep_len = snprintf(NULL, 0, "%d", rep);
+
+    // Calculate new string length
+    size_t new_len = strlen(str) - strlen(orig) + rep_len + 1;  // +1 for '\0'
+
+    // Allocate exact memory needed
+    char *buffer = (char *)malloc(new_len);
+    if (!buffer) {
+        perror("Memory allocation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // Copy before `orig`, insert `rep`, and append the rest
+    snprintf(buffer, new_len, "%.*s%d%s", (int)(p - str), str, rep, p + strlen(orig));
+
+    return buffer;  // Caller must free()
 }
 
 void create_threads(struct data* pb) {
@@ -1379,12 +1391,11 @@ void create_threads(struct data* pb) {
 
 int main() {
     srand((unsigned)time(NULL));
-
+    setup_signal_handlers()
     printf("Bot Version: 3.0\n");
     printf("PID: %d\n", getpid());
     if (read_config() != 0) {
         perror("Read config error.");
-        free(pb);
         return EXIT_FAILURE;
     }
     pb = (struct data*)calloc(numBots, sizeof(struct data));
@@ -1396,6 +1407,7 @@ int main() {
     while (1) {
         startTime = time(NULL);
         create_threads(pb);
+        msleep(conWait * 1000);
     }
     clean_exit(EXIT_SUCCESS);
     return EXIT_SUCCESS;
