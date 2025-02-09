@@ -310,17 +310,9 @@
 	#define INVALID_SOCKET		-1
 #endif
 
-#define MAX_USERNAME_LEN 21
-#define MAX_PASSWORD_LEN 21
-#define MAX_SERVER_LEN 21
-#define MAX_BINDADDR_LEN 21
-#define MAX_CHANNEL_LEN 21
-#define MAX_TRIGGER_LEN 2
-#define MAX_BACKUP_LEN 21
-#define MAX_TOPIC_LEN 41
-#define MAX_TAG_LEN 11
-#define MAX_LOGON_PACKET_LEN 100
-#define MAX_LIST_LEN 21
+#define MAX_LOGON_PACKET_LEN 128
+#define MAX CFG_LEN 32
+#define MAX_LIST_LEN 32
 #define SEND_BUFFER_SIZE 512
 
 typedef struct {
@@ -350,15 +342,15 @@ int main_pid, masterSz, safeSz, shitSz, desSz, threadSz;
 int port, threads, delay, scatter, numBots, banWait, conWait, randGreet, startTime;
 
 // Declare global variables using the same length constraints
-char username[MAX_USERNAME_LEN];
-char password[MAX_PASSWORD_LEN];
-char server[MAX_SERVER_LEN];
-char bindaddr[MAX_BINDADDR_LEN];
-char channel[MAX_CHANNEL_LEN];
-char trigger[MAX_TRIGGER_LEN];
-char backup[MAX_BACKUP_LEN];
-char topic[MAX_TOPIC_LEN];
-char tag[MAX_TAG_LEN];
+char username[MAX_CFG_LEN];
+char password[MAX_CFG_LEN];
+char server[MAX_CFG_LEN];
+char bindaddr[MAX_CFG_LEN];
+char channel[MAX_CFG_LEN];
+char trigger[MAX_CFG_LEN];
+char backup[MAX_CFG_LEN];
+char topic[MAX_CFG_LEN];
+char tag[MAX_CFG_LEN];
 
 struct data {
     time_t lastTime;
@@ -367,14 +359,14 @@ struct data {
     int port, place, threads, delay2, hasop, lockdown, chanham;
     volatile int connected;
     
-    char password[MAX_PASSWORD_LEN];
-    char username[MAX_USERNAME_LEN];
-    char server[MAX_SERVER_LEN];
-    char bindaddr[MAX_BINDADDR_LEN];
-    char channel[MAX_CHANNEL_LEN];
-    char trigger[MAX_TRIGGER_LEN];
+    char password[MAX_CFG_LEN];
+    char username[MAX_CFG_LEN];
+    char server[MAX_CFG_LEN];
+    char bindaddr[MAX_CFG_LEN];
+    char channel[MAX_CFG_LEN];
+    char trigger[MAX_CFG_LEN];
     char logonPacket[MAX_LOGON_PACKET_LEN];
-    char currChan[MAX_CHANNEL_LEN];
+    char currChan[MAX_CFG_LEN];
 };
 struct data *pb;
 struct rusage r_usage;  // Keep this unchanged
