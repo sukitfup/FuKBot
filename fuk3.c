@@ -1342,26 +1342,24 @@ char *replace_str(const char *str, const char *orig, int rep) {
     return buffer;
 }
 
-void create_threads(struct data *pb) {
+void create_threads(struct data* pb) {
     int err;
     int i = 0;
     int numThreads = numBots * threads;
     pthread_t thread[numThreads];
 
-    for (int t = 0; t < numBots; t++, pb++) {  // Keep `pb++` as in the working version
+    for (int t = 0; t < numBots; t++, pb++) {
         char *replaced = replace_str(username, "#", t);
         if (!replaced) {
             perror("Memory allocation failed in replace_str");
             continue;
         }
 
-        char locName[20] = { 0 };
+        char locName[MAX_USERNAME_LEN - 1] = { 0 };
         strncpy(locName, replaced, sizeof(locName) - 1);
 
         if (strcmp(pb->username, locName) != 0) {
             strncpy(pb->username, locName, MAX_USERNAME_LEN - 1);
-            pb->username[MAX_USERNAME_LEN - 1] = '\0';
-
             strncpy(pb->password, password, MAX_PASSWORD_LEN - 1);
             strncpy(pb->channel, channel, MAX_CHANNEL_LEN - 1);
             strncpy(pb->server, server, MAX_SERVER_LEN - 1);
@@ -1383,7 +1381,7 @@ void create_threads(struct data *pb) {
     // Create threads for each bot
     for (int t = 0; t < numBots; t++) {
         for (int z = 0; z < threads; z++, i++) {
-            err = pthread_create(&thread[i], NULL, thread_conn, &pb[t]);
+            err = pthread_create(&thread[i], NULL, thread_conn, pb);
             if (err != 0)
                 perror("pthread_create failed");
         }
@@ -1404,7 +1402,7 @@ int main() {
 
     printf("Bot Version: 3.0\n");
     printf("PID: %d\n", getpid());
-
+    allocate_lists();
     struct data *pb = (struct data *)calloc(numBots, sizeof(struct data));
     if (!pb) {
         perror("Memory allocation failed for pb");
@@ -1422,6 +1420,6 @@ int main() {
         create_threads(pb);
     }
 
-    free(pb);
+    clean_exit(EXIT_SUCCESS);
     return EXIT_SUCCESS;
 }
