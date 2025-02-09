@@ -311,7 +311,7 @@
 #endif
 
 #define MAX_LOGON_PACKET_LEN 128
-#define MAX CFG_LEN 32
+#define MAX_CFG_LEN 32
 #define MAX_LIST_LEN 32
 #define SEND_BUFFER_SIZE 512
 
