@@ -1323,23 +1323,15 @@ void* thread_conn(void* arg) {
     pthread_exit(NULL);
 }
 
-char *replace_str(const char *str, const char *orig, int rep) {
-    char *p = strstr(str, orig);
-    if (!p) return strdup(str); // Return copy if no replacement needed
-
-    size_t newSize = strlen(str) + 10; // Enough space for int + null terminator
-    char *buffer = malloc(newSize);
-    if (!buffer) return NULL; // Handle allocation failure
-
-    // Copy initial part
-    size_t prefixLen = p - str;
-    strncpy(buffer, str, prefixLen);
-    buffer[prefixLen] = '\0';
-
-    // Append replacement
-    snprintf(buffer + prefixLen, newSize - prefixLen, "%d%s", rep, p + strlen(orig));
-
-    return buffer;
+char *replace_str(char *str, char *orig, int rep) {
+  static char buffer[20];
+  char *p;
+  if(!(p = strstr(str, orig)))
+    return str;
+  strncpy(buffer, str, p-str);
+  buffer[p-str] = '\0';
+  sprintf(buffer+(p-str), "%d%s", rep, p+strlen(orig));
+  return buffer;
 }
 
 void create_threads(struct data* pb) {
@@ -1347,54 +1339,39 @@ void create_threads(struct data* pb) {
     int i = 0;
     int numThreads = numBots * threads;
     pthread_t thread[numThreads];
-
+    //Create and configure each bot.
     for (int t = 0; t < numBots; t++, pb++) {
-        char *replaced = replace_str(username, "#", t);
-        if (!replaced) {
-            perror("Memory allocation failed in replace_str");
-            continue;
-        }
-
+        char *replaced = replace_str(username, (char*)"#", t);
         char locName[MAX_USERNAME_LEN - 1] = { 0 };
-        strncpy(locName, replaced, sizeof(locName) - 1);
-
+        memcpy(locName, replaced, strlen(replaced));
+        //char *thisBotsName = strdup(replace_str(username, (char*)"#", t));
+        //There's no need to do this more than once.
         if (strcmp(pb->username, locName) != 0) {
-            strncpy(pb->username, locName, MAX_USERNAME_LEN - 1);
-            strncpy(pb->password, password, MAX_PASSWORD_LEN - 1);
-            strncpy(pb->channel, channel, MAX_CHANNEL_LEN - 1);
-            strncpy(pb->server, server, MAX_SERVER_LEN - 1);
-            strncpy(pb->trigger, trigger, MAX_TRIGGER_LEN - 1);
+            strcpy(pb->username, locName);
+            strcpy(pb->password, password);
+            strcpy(pb->channel, channel);
+            strcpy(pb->server, server);
+            strcpy(pb->trigger, trigger);
         }
-
         pb->botNum = t;
         pb->port = port;
         pb->threads = threads;
-
         memset(pb->logonPacket, '\0', sizeof(pb->logonPacket));
-        snprintf(pb->logonPacket, MAX_LOGON_PACKET_LEN,
-                 "C1\r\nACCT %s\r\nPASS %s\r\nHOME %s\r\nLOGIN\r\n",
-                 pb->username, pb->password, pb->channel);
-
-        free(replaced); // Free dynamically allocated memory
-    }
-
-    // Create threads for each bot
-    for (int t = 0; t < numBots; t++) {
+        sprintf(pb->logonPacket, "C1\r\nACCT %s\r\nPASS %s\r\nHOME %s\r\nLOGIN\r\n", pb->username, pb->password, pb->channel);
+        //Create threads for each bot.
         for (int z = 0; z < threads; z++, i++) {
             err = pthread_create(&thread[i], NULL, thread_conn, pb);
-            if (err != 0)
-                perror("pthread_create failed");
+            if (err < 0)
+                perror("pthread_create");
         }
     }
-
-    // Join threads properly
+    //Join threads if they haven't already kilt themselves.
     for (int t = 0; t < numThreads; t++) {
         err = pthread_join(thread[t], NULL);
-        if (err != 0)
-            perror("pthread_join failed");
+        if (err < 0)
+            perror("pthread_exit");
     }
-
-    msleep(conWait * 1000); // Introduce delay to reduce CPU usage
+    msleep(conWait * 1000);
 }
 
 int main() {
