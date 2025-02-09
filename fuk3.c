@@ -1379,24 +1379,21 @@ int main() {
 
     printf("Bot Version: 3.0\n");
     printf("PID: %d\n", getpid());
-    allocate_lists();
-    struct data *pb = (struct data *)calloc(numBots, sizeof(struct data));
-    if (!pb) {
-        perror("Memory allocation failed for pb");
-        return EXIT_FAILURE;
-    }
-
     if (read_config() != 0) {
         perror("Read config error.");
         free(pb);
         return EXIT_FAILURE;
     }
-
+    pb = (struct data*)calloc(numBots, sizeof(struct data));
+        if (!pb) {
+        perror("Memory allocation failed for pb");
+        return EXIT_FAILURE;
+    }
+    allocate_lists();
     while (1) {
         startTime = time(NULL);
         create_threads(pb);
     }
-
     clean_exit(EXIT_SUCCESS);
     return EXIT_SUCCESS;
 }
