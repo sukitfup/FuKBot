@@ -45,7 +45,7 @@ void allocate_lists() {
     }
 }
 
-void free_config() {
+void free_lists() {
     if (master) { free(master); master = NULL; }
     if (safe) { free(safe); safe = NULL; }
     if (shit) { free(shit); shit = NULL; }
@@ -53,7 +53,7 @@ void free_config() {
 }
 
 void clean_exit(int status) {
-    free_config();
+    free_lists();
     if (pb) {
         free(pb);
     }
@@ -1203,28 +1203,55 @@ int read_config() {
                 numBots = atoi(r + strlen(FUK_CFG_NUMBOTS));
             }
             else if (!memcmp(r, FUK_CFG_MASTER, strlen(FUK_CFG_MASTER))) {
-                master = (masterList*)reallocarray(master, ++masterSz, sizeof(masterList));
-                memset(master[i].id, '\0', sizeof(master[i].id));
-                strcpy(master[i].id, (r + strlen(FUK_CFG_MASTER)));
-                i++;
+                masterList *temp = (masterList *)reallocarray(master, masterSz + 1, sizeof(masterList));
+                if (!temp) {
+                    perror("reallocarray failed for master");
+                    free(master);  // Free existing memory to prevent leaks
+                    exit(EXIT_FAILURE);
+                }
+                master = temp;  // Only update master if reallocarray succeeds
+                strncpy(master[masterSz].id, r + strlen(FUK_CFG_MASTER), sizeof(master[masterSz].id) - 1);
+                master[masterSz].id[sizeof(master[masterSz].id) - 1] = '\0'; // Ensure null-termination
+                masterSz++;
             }
+            
             else if (!memcmp(r, FUK_CFG_SAFE, strlen(FUK_CFG_SAFE))) {
-                safe = (safeList*)reallocarray(safe, ++safeSz, sizeof(safeList));
-                memset(safe[j].id, '\0', sizeof(safe[j].id));
-                strcpy(safe[j].id, (r + strlen(FUK_CFG_SAFE)));
-                j++;
+                safeList *temp = (safeList *)reallocarray(safe, safeSz + 1, sizeof(safeList));
+                if (!temp) {
+                    perror("reallocarray failed for safe");
+                    free(safe);
+                    exit(EXIT_FAILURE);
+                }
+                safe = temp;
+                strncpy(safe[safeSz].id, r + strlen(FUK_CFG_SAFE), sizeof(safe[safeSz].id) - 1);
+                safe[safeSz].id[sizeof(safe[safeSz].id) - 1] = '\0';
+                safeSz++;
             }
+            
             else if (!memcmp(r, FUK_CFG_SHIT, strlen(FUK_CFG_SHIT))) {
-                shit = (shitList*)reallocarray(shit, ++shitSz, sizeof(shitList));
-                memset(shit[k].id, '\0', sizeof(shit[k].id));
-                strcpy(shit[k].id, (r + strlen(FUK_CFG_SHIT)));
-                k++;
+                shitList *temp = (shitList *)reallocarray(shit, shitSz + 1, sizeof(shitList));
+                if (!temp) {
+                    perror("reallocarray failed for shit");
+                    free(shit);
+                    exit(EXIT_FAILURE);
+                }
+                shit = temp;
+                strncpy(shit[shitSz].id, r + strlen(FUK_CFG_SHIT), sizeof(shit[shitSz].id) - 1);
+                shit[shitSz].id[sizeof(shit[shitSz].id) - 1] = '\0';
+                shitSz++;
             }
+            
             else if (!memcmp(r, FUK_CFG_DES, strlen(FUK_CFG_DES))) {
-                des = (desList*)reallocarray(des, ++desSz, sizeof(desList));
-                memset(des[d].id, '\0', sizeof(des[d].id));
-                strcpy(des[d].id, (r + strlen(FUK_CFG_DES)));
-                d++;
+                desList *temp = (desList *)reallocarray(des, desSz + 1, sizeof(desList));
+                if (!temp) {
+                    perror("reallocarray failed for des");
+                    free(des);
+                    exit(EXIT_FAILURE);
+                }
+                des = temp;
+                strncpy(des[desSz].id, r + strlen(FUK_CFG_DES), sizeof(des[desSz].id) - 1);
+                des[desSz].id[sizeof(des[desSz].id) - 1] = '\0';
+                desSz++;
             }
         }
         fclose(cfg);
