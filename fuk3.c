@@ -78,7 +78,7 @@ int try_connect(struct data* pb, struct timeval tv) {
 
 void processList(int s, char* com, char* name, char* list, void **pArray, int *pSize, const char* type) {
     masterList *listArray = (masterList *)(*pArray);
-    int x, once = 1, replace = 0;
+    int x, replace = 0;
 
     // Check if command is LIST
     for (x = 0; x < *pSize; x++) {
@@ -131,7 +131,7 @@ void processList(int s, char* com, char* name, char* list, void **pArray, int *p
     *pArray = listArray;
 }
 
-void cfgStuff(int s, struct data* pb, char* com, char* text) {
+void cfgStuff(int s, char* com, char* text) {
     char* pos;
     char textBuffer[FUK_CFG_MAXCOUNT];
     snprintf(textBuffer, sizeof(textBuffer), "%s", text);
@@ -203,7 +203,7 @@ void OnJoin(int s, struct data* pb, char* szSpeaker) {
 void OnUserFlags(int s, struct data* pb, char* szSpeaker, u_long uFlags) {
     if (uFlags == 18 && !strcasecmp(pb->username, szSpeaker)) {
         pb->hasop = 1;
-        if (topic != NULL) {
+        if (topic) {
             Send(s, SERVER_COMMAND_1, BASE_TOPIC, topic);
             msleep(3000);
         }
@@ -303,15 +303,15 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
         {
             case CMD_CFGSTUFF_LIST:
                 if (ptrDat != NULL && pb->botNum == 0) {
-                    cfgStuff(s, pb, com, ptrDat);
+                    cfgStuff(s, com, ptrDat);
                 }
                 break;
 
             case CMD_CFGSTUFF_ADD:
             {
                 if (ptrDat != NULL && pb->botNum == 0) {
-                    cfgStuff(s, pb, com, ptrDat);
-                    save_cfg(pb);
+                    cfgStuff(s,com, ptrDat);
+                    save_cfg();
                 }
                 break;
             }
@@ -319,8 +319,8 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
             case CMD_CFGSTUFF_REM:
             {
                 if (ptrDat != NULL && pb->botNum == 0) {
-                    cfgStuff(s, pb, com, ptrDat);
-                    save_cfg(pb);
+                    cfgStuff(s, com, ptrDat);
+                    save_cfg();
                 }
                 break;
             }
@@ -343,7 +343,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                         memset(trigger, 0, sizeof(trigger));
                         strncpy(trigger, ptrDat, sizeof(trigger) - 1);
 
-                        save_cfg(pb);
+                        save_cfg();
                         Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker,
                              BASE_TRIGGER, BASE_ISNOW, pb->trigger);
                         msleep(3000);
@@ -371,7 +371,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                         memset(channel, 0, sizeof(channel));
                         strncpy(channel, ptrDat, sizeof(channel) - 1);
 
-                        save_cfg(pb);
+                        save_cfg();
                         Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker,
                              BASE_HOME, BASE_ISNOW, pb->channel);
                         msleep(3000);
@@ -403,7 +403,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     } else if (pb->botNum == 0) {
                         memset(topic, 0, sizeof(topic));
                         strncpy(topic, ptrDat, sizeof(topic) - 1);
-                        save_cfg(pb);
+                        save_cfg();
                         Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker,
                              BASE_TOPIC, BASE_ISNOW, topic);
                         msleep(3000);
@@ -422,7 +422,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     } else {
                         memset(backup, 0, sizeof(backup));
                         strncpy(backup, ptrDat, sizeof(backup) - 1);
-                        save_cfg(pb);
+                        save_cfg();
                         Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker,
                              BASE_BACKUP, BASE_ISNOW, backup);
                         msleep(3000);
@@ -452,7 +452,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                         msleep(3000);
                     } else {
                         threads = atoi(ptrDat);
-                        save_cfg(pb);
+                        save_cfg();
                         Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
                              BASE_THREADS, BASE_ISNOW, pb->threads);
                         msleep(3000);
@@ -473,7 +473,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                         // Update both global and pb->port if that is your intention
                         port = atoi(ptrDat);
                         pb->port = port;  // so it stays in sync
-                        save_cfg(pb);
+                        save_cfg();
                         Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
                              BASE_PORT, BASE_ISNOW, port);
                         msleep(3000);
@@ -491,7 +491,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                         msleep(3000);
                     } else {
                         delay = atoi(ptrDat);
-                        save_cfg(pb);
+                        save_cfg();
                         Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
                              BASE_DELAY, BASE_ISNOW, delay);
                         msleep(3000);
@@ -519,7 +519,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                         msleep(3000);
                     } else {
                         scatter = atoi(ptrDat);
-                        save_cfg(pb);
+                        save_cfg();
                         Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
                              BASE_SCATTER, BASE_ISNOW, scatter);
                         msleep(3000);
@@ -537,7 +537,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                         msleep(3000);
                     } else {
                         banWait = atoi(ptrDat) * 1000;
-                        save_cfg(pb);
+                        save_cfg();
                         Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
                              BASE_BANWAIT, BASE_ISNOW, (banWait / 1000));
                         msleep(3000);
@@ -555,7 +555,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                         msleep(3000);
                     } else {
                         conWait = atoi(ptrDat);
-                        save_cfg(pb);
+                        save_cfg();
                         Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
                              BASE_CONWAIT, BASE_ISNOW, conWait);
                         msleep(3000);
@@ -900,7 +900,7 @@ void OnInfo(int s, struct data *pb, char *szEventText) {
     }
 }
 
-void OnError(int s, struct data *pb, char *szEventText) {
+void OnError(struct data *pb, char *szEventText) {
     if (!pb || !szEventText) {
         return;  // Prevent NULL dereferences
     }
@@ -944,7 +944,7 @@ void Dispatch(int s, struct data *pb, char *szEventText) {
 
     eventType = strtok_r(szEventText, " ", &pos);
     if (!eventType) return;  // Ensure we have an event type
-
+    //printf("Received event: %s\n", eventType);
     if (!strcasecmp(eventType, "USER")) {
         USER_CMD = strtok_r(NULL, " ", &pos);
         if (!USER_CMD) return;
@@ -999,7 +999,7 @@ void Dispatch(int s, struct data *pb, char *szEventText) {
             if (!strcasecmp(SERVER_CMD, "INFO")) {
                 OnInfo(s, pb, SERVER_MSG);
             } else {
-                OnError(s, pb, SERVER_MSG);
+                OnError(pb, SERVER_MSG);
             }
             return;
         }
@@ -1087,7 +1087,7 @@ void message_loop(int s, struct data* pb) {
     }
 }
 
-int save_cfg(struct data* pb) {
+int save_cfg() {
     FILE* cfg;
     int i;
     cfg = fopen(FUK_CFG, FUK_CFG_WRITE);
@@ -1203,55 +1203,28 @@ int read_config() {
                 numBots = atoi(r + strlen(FUK_CFG_NUMBOTS));
             }
             else if (!memcmp(r, FUK_CFG_MASTER, strlen(FUK_CFG_MASTER))) {
-                masterList *temp = (masterList *)reallocarray(master, masterSz + 1, sizeof(masterList));
-                if (!temp) {
-                    perror("reallocarray failed for master");
-                    free(master);  // Free existing memory to prevent leaks
-                    exit(EXIT_FAILURE);
-                }
-                master = temp;  // Only update master if reallocarray succeeds
-                strncpy(master[masterSz].id, r + strlen(FUK_CFG_MASTER), sizeof(master[masterSz].id) - 1);
-                master[masterSz].id[sizeof(master[masterSz].id) - 1] = '\0'; // Ensure null-termination
-                masterSz++;
+                master = (masterList*)reallocarray(master, ++masterSz, sizeof(masterList));
+                memset(master[i].id, '\0', sizeof(master[i].id));
+                strcpy(master[i].id, (r + strlen(FUK_CFG_MASTER)));
+                i++;
             }
-            
             else if (!memcmp(r, FUK_CFG_SAFE, strlen(FUK_CFG_SAFE))) {
-                safeList *temp = (safeList *)reallocarray(safe, safeSz + 1, sizeof(safeList));
-                if (!temp) {
-                    perror("reallocarray failed for safe");
-                    free(safe);
-                    exit(EXIT_FAILURE);
-                }
-                safe = temp;
-                strncpy(safe[safeSz].id, r + strlen(FUK_CFG_SAFE), sizeof(safe[safeSz].id) - 1);
-                safe[safeSz].id[sizeof(safe[safeSz].id) - 1] = '\0';
-                safeSz++;
+                safe = (safeList*)reallocarray(safe, ++safeSz, sizeof(safeList));
+                memset(safe[j].id, '\0', sizeof(safe[j].id));
+                strcpy(safe[j].id, (r + strlen(FUK_CFG_SAFE)));
+                j++;
             }
-            
             else if (!memcmp(r, FUK_CFG_SHIT, strlen(FUK_CFG_SHIT))) {
-                shitList *temp = (shitList *)reallocarray(shit, shitSz + 1, sizeof(shitList));
-                if (!temp) {
-                    perror("reallocarray failed for shit");
-                    free(shit);
-                    exit(EXIT_FAILURE);
-                }
-                shit = temp;
-                strncpy(shit[shitSz].id, r + strlen(FUK_CFG_SHIT), sizeof(shit[shitSz].id) - 1);
-                shit[shitSz].id[sizeof(shit[shitSz].id) - 1] = '\0';
-                shitSz++;
+                shit = (shitList*)reallocarray(shit, ++shitSz, sizeof(shitList));
+                memset(shit[k].id, '\0', sizeof(shit[k].id));
+                strcpy(shit[k].id, (r + strlen(FUK_CFG_SHIT)));
+                k++;
             }
-            
             else if (!memcmp(r, FUK_CFG_DES, strlen(FUK_CFG_DES))) {
-                desList *temp = (desList *)reallocarray(des, desSz + 1, sizeof(desList));
-                if (!temp) {
-                    perror("reallocarray failed for des");
-                    free(des);
-                    exit(EXIT_FAILURE);
-                }
-                des = temp;
-                strncpy(des[desSz].id, r + strlen(FUK_CFG_DES), sizeof(des[desSz].id) - 1);
-                des[desSz].id[sizeof(des[desSz].id) - 1] = '\0';
-                desSz++;
+                des = (desList*)reallocarray(des, ++desSz, sizeof(desList));
+                memset(des[d].id, '\0', sizeof(des[d].id));
+                strcpy(des[d].id, (r + strlen(FUK_CFG_DES)));
+                d++;
             }
         }
         fclose(cfg);
@@ -1264,7 +1237,8 @@ int Connect(int s, struct timeval tv, struct data* pb) {
     struct sockaddr_in server_addr;
     struct addrinfo hints = {0}, *res = NULL;
     fd_set fdr, fdw;
-    int err = 0, errlen = sizeof(err);
+    int err = 0;
+    socklen_t errlen = sizeof(err);
 
     // Resolve server address
     hints.ai_family = AF_INET;
@@ -1279,8 +1253,8 @@ int Connect(int s, struct timeval tv, struct data* pb) {
     server_addr.sin_port = htons(pb->port);
     server_addr.sin_addr = ((struct sockaddr_in *)res->ai_addr)->sin_addr;
 
-    // Bind socket (optional, only if `bindaddr` is set)
-    if (bindaddr && inet_pton(AF_INET, bindaddr, &bind_addr.sin_addr) > 0) {
+    // Bind socket
+    if (inet_pton(AF_INET, bindaddr, &bind_addr.sin_addr) > 0) {
         if (bind(s, (struct sockaddr*)&bind_addr, sizeof(bind_addr)) < 0) {
             if (res) freeaddrinfo(res); // Ensure res is valid before freeing
             return -2;  // Binding failed
@@ -1368,7 +1342,7 @@ void create_threads(struct data* pb) {
     //Create and configure each bot.
     for (int t = 0; t < numBots; t++, pb++) {
         char *replaced = replace_str(username, (char*)"#", t);
-        char locName[MAX_CFG_LEN - 1] = { 0 };
+        char locName[MAX_CFG_LEN -1] = { 0 };
         memcpy(locName, replaced, strlen(replaced));
         //char *thisBotsName = strdup(replace_str(username, (char*)"#", t));
         //There's no need to do this more than once.
@@ -1397,14 +1371,21 @@ void create_threads(struct data* pb) {
         if (err < 0)
             perror("pthread_exit");
     }
-    msleep(conWait * 1000);
 }
 
 int main() {
     srand((unsigned)time(NULL));
     setup_signal_handlers();
-    printf("Bot Version: 3.0\n");
-    printf("PID: %d\n", getpid());
+    printf("Bot Version: 3.666\n");
+    printf("PID: %d\n", getpid() + 1);
+    if ((main_pid = fork()) == -1) {
+        printf("shutting down: unable to fork\n");
+        exit(1);
+        return 1;
+    }
+    if (main_pid != 0) {
+        return 0;
+    }
     if (read_config() != 0) {
         perror("Read config error.");
         return EXIT_FAILURE;
