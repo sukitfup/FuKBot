@@ -435,7 +435,7 @@ void message_loop(int s, struct data* pb);
 #if defined(WINDOWS_CPP_BUILD)
 void msleep(unsigned long milisec);
 #endif
-char *replace_str(char *str, char *orig, int rep);
+char *replace_str(const char *str, const char *orig, int rep);
 int save_cfg(struct data* pb);
 int read_config();
 int Connect(int s, struct timeval tv, struct data* pb);
