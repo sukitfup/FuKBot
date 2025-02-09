@@ -820,7 +820,7 @@ void OnChannel(int s, struct data* pb, char* szEventText) {
         msleep(3000);
 
         // Ensure 'backup' is properly initialized before use
-        extern char backup[MAX_CHANNEL_LEN];  // Assumption: backup is declared elsewhere
+        extern char backup[MAX_CFG_LEN];  // Assumption: backup is declared elsewhere
         if (backup[0] != '\0') {  // Ensure backup is not empty before using it
             Send(s, SERVER_COMMAND_1, SERVER_JOIN, backup);
             msleep(3000);
@@ -1324,7 +1324,7 @@ void* thread_conn(void* arg) {
 }
 
 char *replace_str(char *str, char *orig, int rep) {
-  static char buffer[20];
+  static char buffer[MAX_CFG_LEN -1];
   char *p;
   if(!(p = strstr(str, orig)))
     return str;
@@ -1342,7 +1342,7 @@ void create_threads(struct data* pb) {
     //Create and configure each bot.
     for (int t = 0; t < numBots; t++, pb++) {
         char *replaced = replace_str(username, (char*)"#", t);
-        char locName[MAX_USERNAME_LEN - 1] = { 0 };
+        char locName[MAX_CFG_LEN - 1] = { 0 };
         memcpy(locName, replaced, strlen(replaced));
         //char *thisBotsName = strdup(replace_str(username, (char*)"#", t));
         //There's no need to do this more than once.
