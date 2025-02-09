@@ -295,6 +295,9 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
         // Resolve the command to an enum
         CommandID cmd = resolve_command(com);
 
+        // Print the command ID for verification
+        printf("Resolved command ID: %d\n", cmd);
+        
         // Switch on the enum for clearer code
         switch (cmd)
         {
