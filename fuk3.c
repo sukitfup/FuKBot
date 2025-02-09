@@ -1391,7 +1391,7 @@ void create_threads(struct data* pb) {
 
 int main() {
     srand((unsigned)time(NULL));
-    setup_signal_handlers()
+    setup_signal_handlers();
     printf("Bot Version: 3.0\n");
     printf("PID: %d\n", getpid());
     if (read_config() != 0) {
