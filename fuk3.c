@@ -1323,100 +1323,108 @@ void* thread_conn(void* arg) {
     pthread_exit(NULL);
 }
 
-char *replace_str(char *str, char *orig, int rep) {
-  static char buffer[20];
-  char *p;
-  if(!(p = strstr(str, orig)))
-    return str;
-  strncpy(buffer, str, p-str);
-  buffer[p-str] = '\0';
-  sprintf(buffer+(p-str), "%d%s", rep, p+strlen(orig));
-  return buffer;
+char *replace_str(const char *str, const char *orig, int rep) {
+    char *p = strstr(str, orig);
+    if (!p) return strdup(str); // Allocate new copy if no replacement needed
+
+    size_t newSize = strlen(str) + 10; // Enough space for int and null-terminator
+    char *buffer = malloc(newSize);
+    if (!buffer) return NULL; // Handle allocation failure
+
+    // Copy initial part
+    size_t prefixLen = p - str;
+    strncpy(buffer, str, prefixLen);
+    buffer[prefixLen] = '\0';
+
+    // Append replacement
+    snprintf(buffer + prefixLen, newSize - prefixLen, "%d%s", rep, p + strlen(orig));
+
+    return buffer;
 }
 
+/**
+ * Fix: Properly allocate `pb`, initialize and join threads without unnecessary free calls.
+ */
 void create_threads(struct data *pb) {
     int err;
-    int i = 0;
     int numThreads = numBots * threads;
-    pthread_t thread[numThreads];
+    pthread_t *thread = malloc(numThreads * sizeof(pthread_t));
     if (!thread) {
-        perror("malloc failed for thread array");
+        perror("Memory allocation failed for thread array");
         return;
     }
 
-    // Initialize each bot
-    for (int t = 0; t < numBots; t++, pb++) {
+    for (int t = 0; t < numBots; t++) {
         struct data *bot = &pb[t];
 
-        char *replaced = replace_str(username, (char*)"#", t);
-        char locName[20] = { 0 };
-        memcpy(locName, replaced, strlen(replaced));
+        char *replaced = replace_str(username, "#", t);
+        if (!replaced) {
+            perror("Memory allocation failed in replace_str");
+            continue;
+        }
 
         strncpy(bot->username, replaced, MAX_USERNAME_LEN - 1);
-        pb->username[MAX_USERNAME_LEN - 1] = '\0';
+        bot->username[MAX_USERNAME_LEN - 1] = '\0'; // Ensure null termination
 
-        snprintf(pb->password, MAX_PASSWORD_LEN, "%s", password);
-        snprintf(pb->channel, MAX_CHANNEL_LEN, "%s", channel);
-        snprintf(pb->server, MAX_SERVER_LEN, "%s", server);
-        snprintf(pb->trigger, MAX_TRIGGER_LEN, "%s", trigger);
+        snprintf(bot->password, MAX_PASSWORD_LEN, "%s", password);
+        snprintf(bot->channel, MAX_CHANNEL_LEN, "%s", channel);
+        snprintf(bot->server, MAX_SERVER_LEN, "%s", server);
+        snprintf(bot->trigger, MAX_TRIGGER_LEN, "%s", trigger);
 
-        pb->botNum = t;
-        pb->port = port;
-        pb->threads = threads;
+        bot->botNum = t;
+        bot->port = port;
+        bot->threads = threads;
 
-        snprintf(pb->logonPacket, MAX_LOGON_PACKET_LEN,
+        snprintf(bot->logonPacket, MAX_LOGON_PACKET_LEN,
                  "C1\r\nACCT %s\r\nPASS %s\r\nHOME %s\r\nLOGIN\r\n",
-                 pb->username, pb->password, pb->channel);
+                 bot->username, bot->password, bot->channel);
+
+        free(replaced); // Free dynamically allocated name
     }
 
-    // Start threads properly
-    for (int z = 0; z < threads; z++, i++) {
-        err = pthread_create(&thread[i], NULL, thread_conn, pb);
-        if (err < 0)
-            perror("pthread_create");
+    for (int t = 0; t < numBots; t++) {
+        for (int z = 0; z < threads; z++) {
+            err = pthread_create(&thread[t * threads + z], NULL, thread_conn, &pb[t]);
+            if (err != 0) {
+                perror("pthread_create failed");
+            }
+        }
     }
 
-    // Join threads
     for (int t = 0; t < numThreads; t++) {
-        pthread_join(thread[t], NULL);
+        err = pthread_join(thread[t], NULL);
+        if (err != 0) {
+            perror("pthread_join failed");
+        }
     }
 
     free(thread);
+    msleep(conWait * 1000); // Delay to prevent excessive CPU usage
 }
 
 int main() {
     srand((unsigned)time(NULL));
-    setup_signal_handlers();
-    printf("Bot Version: 3.0\n");
+
+    printf("Bot Version: 3.666\n");
     printf("PID: %d\n", getpid());
 
-    pb = (struct data *)calloc(numBots, sizeof(struct data));
+    struct data *pb = (struct data *)calloc(numBots, sizeof(struct data));
     if (!pb) {
         perror("Memory allocation failed for pb");
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
-
     allocate_lists();
-
     if (read_config() != 0) {
-        perror("Read config error");
-        clean_exit(EXIT_FAILURE);
-    }
-
-    if ((main_pid = fork()) == -1) {
-        perror("shutting down: unable to fork");
-        clean_exit(EXIT_FAILURE);
-    }
-
-    if (main_pid != 0) {
-        return EXIT_SUCCESS;
+        perror("Read config error.");
+        free(pb);
+        return EXIT_FAILURE;
     }
 
     while (1) {
         startTime = time(NULL);
         create_threads(pb);
-        sleep(1);
     }
 
-    clean_exit(EXIT_SUCCESS);
+    free(pb);
+    return EXIT_SUCCESS;
 }
