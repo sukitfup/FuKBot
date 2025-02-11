@@ -14,15 +14,19 @@ jobs:
         run: |
           sudo apt update && sudo apt install -y cmake gcc libcjson-dev
           dpkg -L libcjson-dev | grep cJSON.h || (echo "cJSON header not found!" && exit 1)
-
+  
+      - name: Clean CMake Cache
+        run: |
+          if (Test-Path -Path build) { Remove-Item -Recurse -Force build }
+  
       - name: Create build directory
-        run: mkdir -p build
-
+        run: New-Item -Path build -ItemType Directory -Force
+  
       - name: Configure CMake
-        run: cmake -B build
-
+        run: cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=.\vcpkg\scripts\buildsystems\vcpkg.cmake
+  
       - name: Build
-        run: cmake --build build
+        run: cmake --build build --config Release
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
