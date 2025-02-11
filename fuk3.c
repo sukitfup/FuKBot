@@ -147,7 +147,7 @@ CommandID resolve_command(const char* com) {
     return CMD_UNKNOWN;
 }
 
-void processList(int s, char* com, char* name, char* list, void **pArray, int *pSize, const char* type) {
+void processList(int s, char* com, char* name, void **pArray, int *pSize, const char* type) {
     masterList *listArray = (masterList *)(*pArray);
     int x;
     //printf("Processing list: %s\n", list);  // ✅ Debug print
@@ -240,16 +240,16 @@ void cfgStuff(int s, char* com, char* text) {
     }
     //printf("Processing cfgStuff: list=%s, name=%s\n", list, name);  // ✅ Debug print
     if (strstr(list, CFGSTUFF_MASTER)) {
-        processList(s, com, name, list, (void**)&master, &masterSz, CFGSTUFF_MASTER);
+        processList(s, com, name, (void**)&master, &masterSz, CFGSTUFF_MASTER);
     }
     else if (strstr(list, CFGSTUFF_SAFE)) {
-        processList(s, com, name, list, (void**)&safe, &safeSz, CFGSTUFF_SAFE);
+        processList(s, com, name, (void**)&safe, &safeSz, CFGSTUFF_SAFE);
     }
     else if (strstr(list, CFGSTUFF_SHIT)) {
-        processList(s, com, name, list, (void**)&shit, &shitSz, CFGSTUFF_SHIT);
+        processList(s, com, name, (void**)&shit, &shitSz, CFGSTUFF_SHIT);
     }
     else if (strstr(list, CFGSTUFF_DES)) {
-        processList(s, com, name, list, (void**)&des, &desSz, CFGSTUFF_DES);
+        processList(s, com, name, (void**)&des, &desSz, CFGSTUFF_DES);
     }
 }
 
@@ -1342,80 +1342,148 @@ int read_config() {
 
     return 0;
 }
-      
-int Connect(int s, struct timeval tv, struct data* pb) {
-    struct sockaddr_in bind_addr = { .sin_family = AF_INET };
-    struct sockaddr_in server_addr;
-    struct addrinfo hints = {0}, *res = NULL;
-    fd_set fdr, fdw;
-    int err = 0;
-    socklen_t errlen = sizeof(err);
 
-    // Resolve server address
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
+// This function ensures that if the cached DNS results are
+// older than DNS_CACHE_TTL seconds, we refresh them.
+struct addrinfo* get_cached_dns(const char *portStr) {
+    time_t now = time(NULL);
 
-    int gai_err = getaddrinfo(pb->server, NULL, &hints, &res);
-    if (gai_err != 0) {
-        if (res) freeaddrinfo(res);
-        printf("Address resolution failed: %s\n", gai_strerror(gai_err));
+    pthread_mutex_lock(&g_dns_mutex);
+
+    // If no cache or it's older than 5 seconds, do a fresh lookup
+    if (!g_cached_dns || (now - g_last_dns_update) > DNS_CACHE_TTL) {
+        // If we already had a cached list, free it
+        if (g_cached_dns) {
+            freeaddrinfo(g_cached_dns);
+            g_cached_dns = NULL;
+        }
+
+        struct addrinfo hints;
+        memset(&hints, 0, sizeof(hints));
+        hints.ai_family   = AF_INET;   // or AF_INET if you only want IPv4
+        hints.ai_socktype = SOCK_STREAM;
+
+        int ret = getaddrinfo(pb->server, portStr, &hints, &g_cached_dns);
+        if (ret != 0) {
+            fprintf(stderr, "getaddrinfo failed: %s\n", gai_strerror(ret));
+            g_cached_dns = NULL;  // ensure it's not left half‐initialized
+        } else {
+            // Successfully refreshed
+            g_last_dns_update = now;
+        }
+    }
+
+    // You might want to *return a copy* if you need full control
+    // outside the lock. But in many cases, returning the pointer
+    // is enough, as long as you keep the lock for usage or only
+    // read it quickly.
+    struct addrinfo* result = g_cached_dns;
+    pthread_mutex_unlock(&g_dns_mutex);
+
+    return result;
+}
+
+/**
+ * connect_nonblock()
+ *   - Sets the socket to O_NONBLOCK.
+ *   - Calls connect().
+ *   - If connect() returns EINPROGRESS, uses select() with the given `tv`
+ *     to wait for the socket to become writable.
+ *   - Returns 0 on success, -1 on failure.
+ */
+static int connect_nonblock(int s,
+                            const struct sockaddr* addr,
+                            socklen_t addrlen,
+                            struct timeval tv)
+{
+    set_nonblock(s);
+
+    if (connect(s, addr, addrlen) == 0) {
+        // Connected immediately (rare but possible)
+        return 0;
+    }
+    if (errno != EINPROGRESS) {
+        // Some other error
         return -1;
     }
 
-    // Prepare server address
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(pb->port);
-    server_addr.sin_addr = ((struct sockaddr_in *)res->ai_addr)->sin_addr;
+    // Wait for writeability
+    fd_set wfds;
+    FD_ZERO(&wfds);
+    FD_SET(s, &wfds);
 
-    // Bind socket
-    if (inet_pton(AF_INET, bindaddr, &bind_addr.sin_addr) > 0) {
-        if (bind(s, (struct sockaddr*)&bind_addr, sizeof(bind_addr)) < 0) {
-            if (res) freeaddrinfo(res);
-            printf("Binding failed.");
-            return -2;  // Binding failed
-        }
+    int ret = select(s + 1, NULL, &wfds, NULL, &tv);
+    if (ret <= 0) { 
+        // 0 => timeout, -1 => error
+        return -1;
+    }
+    if (!FD_ISSET(s, &wfds)) {
+        // Not writable for some reason
+        return -1;
     }
 
-    set_nonblock(s);
-
-    // Start non-blocking connection
-    connect(s, (struct sockaddr*)&server_addr, sizeof(server_addr));
-
-    // Use select to wait for connection
-    FD_ZERO(&fdr);
-    FD_ZERO(&fdw);
-    FD_SET(s, &fdr);
-    FD_SET(s, &fdw);
-
-    int ret = select(s + 1, &fdr, &fdw, NULL, &tv);
-    if (ret == -1) {
-        //perror("select() failed");
-        if (res) freeaddrinfo(res);
-        return -1;  // Indicate error
-    } else if (ret == 0) {
-        //printf("Timeout occurred.");
-        if (res) freeaddrinfo(res);
-        return -3;  // Indicate timeout
+    // Double-check for connect() success
+    int so_error = 0;
+    socklen_t len = sizeof(so_error);
+    getsockopt(s, SOL_SOCKET, SO_ERROR, &so_error, &len);
+    if (so_error != 0) {
+        errno = so_error;
+        return -1;
     }
 
-    // Check if connection was successful
-    if (FD_ISSET(s, &fdw)) {
-        getsockopt(s, SOL_SOCKET, SO_ERROR, &err, &errlen);
-        if (err != 0) {
-            if (res) freeaddrinfo(res);
-            //printf("Connection failed.");
-            return -4;  // Connection failed
-        }
-    } else {
-        if (res) freeaddrinfo(res);
-        //printf("Unexpected failure.");
-        return -5;  // Unexpected failure
-    }
-
-    if (res) freeaddrinfo(res);
-    //printf("Connected.");
-    return 0;  // Successfully connected
+    return 0; // success
 }
+
+/**
+ * Connect() tries exactly ONE address from the DNS cache
+ * using the already-created socket 's'.
+ *   - Returns 0 if connect succeeded,
+ *     -1 if bind or connect failed,
+ *     or if no addresses exist.
+ */
+int Connect(int s, struct timeval tv, struct data* pb) {
+    // Convert port to string for getaddrinfo
+    char portStr[16];
+    snprintf(portStr, sizeof(portStr), "%d", pb->port);
+
+    // Obtain cached DNS results
+    struct addrinfo* ai = get_cached_dns(portStr);
+    if (!ai) {
+        return -1; // no addresses
+    }
+
+    // We'll just take the FIRST address from the list:
+    // If you want to attempt multiple, you'd need multiple attempts,
+    // but then you'd also need multiple sockets, because once you've
+    // called connect() on 's', you can't just reconnect it to a different address.
+    struct addrinfo* p = ai; 
+    if (!p) {
+        return -1; 
+    }
+
+    // BIND to your local IP if desired
+    if (bindaddr[0]) {
+        struct sockaddr_in local_addr;
+        memset(&local_addr, 0, sizeof(local_addr));
+        local_addr.sin_family = AF_INET;
+        local_addr.sin_port   = 0; // ephemeral local port
+        inet_pton(AF_INET, bindaddr, &local_addr.sin_addr);
+
+        if (bind(s, (struct sockaddr*)&local_addr, sizeof(local_addr)) < 0) {
+            perror("bind failed");
+            return -1;
+        }
+    }
+
+    // Nonblocking connect on the one address
+    if (connect_nonblock(s, p->ai_addr, p->ai_addrlen, tv) == 0) {
+        // success
+        return 0;
+    }
+    // else fail
+    return -1;
+}
+
 
 void* thread_conn(void* arg) {
     int s;
@@ -1431,11 +1499,15 @@ void* thread_conn(void* arg) {
         s = socket(AF_INET, SOCK_STREAM, 0);
         if (Connect(s, tv, pb) == 0) {
             break;
-        }
+        } else {
+            //printf("Connection failed. Retrying...\n");
+            close(s);
+        }   
     }
 
     // Ensure only one thread establishes the connection
-    if (!atomic_compare_exchange_strong(&pb->connected, &(bool){false}, true)) {
+    bool expected = false;
+    if (!atomic_compare_exchange_strong(&pb->connected, &expected, true)) {
         //printf("Wasn't firt thread. Closing socket.\n");
         close(s);
         pthread_exit(NULL);
