@@ -8,6 +8,12 @@ set(CMAKE_C_STANDARD_REQUIRED True)
 # Enable warnings
 add_compile_options(-Wall -Wextra)
 
+if(WIN32)
+    add_executable(FuKBoT fuk3.cpp)
+else()
+    add_executable(FuKBoT fuk3.c)
+endif()
+
 # Find cJSON library
 find_library(CJSON_LIB NAMES cjson libcjson PATHS /usr/lib /usr/local/lib /lib/x86_64-linux-gnu)
 find_path(CJSON_INCLUDE_DIR cjson/cJSON.h PATHS /usr/include /usr/local/include)
