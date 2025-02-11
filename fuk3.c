@@ -1,4 +1,41 @@
+
 #include "fuk3.h"
+
+// Global pointers for lists (unchanged)
+masterList* master = NULL;
+safeList*   safe   = NULL;
+shitList*   shit   = NULL;
+desList*    des    = NULL;
+
+// Global pointer to the bot array
+struct data *pb = NULL;
+
+// Global sizes and configuration variables
+int masterSz = 0;
+int safeSz   = 0;
+int shitSz   = 0;
+int desSz    = 0;
+int numBots  = 0;
+int main_pid, threadSz, port, threads, delay, scatter, banWait, conWait, randGreet, startTime;
+
+// Global strings for configuration
+char username[MAX_CFG_LEN];
+char password[MAX_CFG_LEN];
+char server[MAX_CFG_LEN];
+char bindaddr[MAX_CFG_LEN];
+char channel[MAX_CFG_LEN];
+char trigger[MAX_CFG_LEN];
+char backup[MAX_CFG_LEN];
+char topic[MAX_CFG_LEN];
+char tag[MAX_CFG_LEN];
+
+void clean_exit(int status) {
+    free_lists();
+    if (pb) {
+        free(pb);
+    }
+    exit(status);
+}
 
 int Send(int s, const char* lpszFmt, ...) {
     char szOutStr[SEND_BUFFER_SIZE];
@@ -10,7 +47,7 @@ int Send(int s, const char* lpszFmt, ...) {
     
     va_end(argptr);
     
-    return send(s, szOutStr, strlen(szOutStr), 0);
+    return send(s, szOutStr, strnlen(szOutStr, sizeof(szOutStr)), 0);
 }
 
 void msleep(unsigned long milliseconds) {
@@ -28,191 +65,42 @@ void set_nonblock(int s) {
 }
 
 void allocate_lists() {
-    // Ensure minimum allocation of 1 element
-    masterSz = masterSz > 0 ? masterSz : 1;
-    safeSz = safeSz > 0 ? safeSz : 1;
-    shitSz = shitSz > 0 ? shitSz : 1;
-    desSz = desSz > 0 ? desSz : 1;
-
-    master = calloc(masterSz, sizeof(masterList));
-    safe = calloc(safeSz, sizeof(safeList));
-    shit = calloc(shitSz, sizeof(shitList));
-    des = calloc(desSz, sizeof(desList));
-
-    if (!master || !safe || !shit || !des) {
-        perror("Memory allocation failed for lists");
-        exit(EXIT_FAILURE);
+    if (masterSz > 0) {
+        master = calloc(masterSz, sizeof(masterList));
+        if (!master) { perror("calloc failed for master"); clean_exit(EXIT_FAILURE); }
+    } else {
+        master = NULL;
     }
+
+    if (safeSz > 0) {
+        safe = calloc(safeSz, sizeof(safeList));
+        if (!safe) { perror("calloc failed for safe"); clean_exit(EXIT_FAILURE); }
+    } else {
+        safe = NULL;
+    }
+
+    if (shitSz > 0) {
+        shit = calloc(shitSz, sizeof(shitList));
+        if (!shit) { perror("calloc failed for shit"); clean_exit(EXIT_FAILURE); }
+    } else {
+        shit = NULL;
+    }
+
+    if (desSz > 0) {
+        des = calloc(desSz, sizeof(desList));
+        if (!des) { perror("calloc failed for des"); clean_exit(EXIT_FAILURE); }
+    } else {
+        des = NULL;
+    }
+
+    //printf("Allocated lists: masterSz=%d, safeSz=%d, shitSz=%d, desSz=%d\n", masterSz, safeSz, shitSz, desSz);
 }
 
 void free_lists() {
-    if (master) { free(master); master = NULL; }
-    if (safe) { free(safe); safe = NULL; }
-    if (shit) { free(shit); shit = NULL; }
-    if (des) { free(des); des = NULL; }
-}
-
-void clean_exit(int status) {
-    free_lists();
-    if (pb) {
-        free(pb);
-    }
-    exit(status);
-}
-
-void setup_signal_handlers() {
-    signal(SIGINT, clean_exit);
-    signal(SIGTERM, clean_exit);
-}
-
-int try_connect(struct data* pb, struct timeval tv) {
-    int s;
-    while (!atomic_load(&pb->connected)) {
-        s = socket(AF_INET, SOCK_STREAM, 0);
-        if (Connect(s, tv, pb) == 0)
-            return s;  // Successful connection
-        close(s);
-    }
-    return -1;
-}
-
-void processList(int s, char* com, char* name, char* list, void **pArray, int *pSize, const char* type) {
-    masterList *listArray = (masterList *)(*pArray);
-    int x, replace = 0;
-
-    // Check if command is LIST
-    for (x = 0; x < *pSize; x++) {
-        if (!strcasecmp(CFGSTUFF_LIST, com)) {
-            Send(s, CFGSTUFF_FORMATTING_X_EQUILS_X, type, listArray[x].id);
-            msleep(3000);
-        }
-        else if (!strcasecmp(CFGSTUFF_REM, com) && name != NULL) {
-            if (!strcasecmp(name, listArray[x].id)) {
-                replace = 1;
-            }
-            if (replace) {
-                if (x < *pSize - 1) {
-                    memmove(&listArray[x], &listArray[x + 1], ((*pSize) - x - 1) * sizeof(masterList));
-                }
-                masterList *temp = realloc(listArray, (*pSize - 1) * sizeof(masterList));
-                if (temp || *pSize == 1) {  // realloc can return NULL for size 0
-                    *pArray = temp;
-                    (*pSize)--;
-                } else {
-                    perror("realloc failed in processList");
-                }
-                break;
-            }
-        }
-        else if (!strcasecmp(CFGSTUFF_ADD, com) && name != NULL) {
-            if (!strcasecmp(listArray[x].id, name)) {
-                Send(s, CFGSTUFF_FORMATTING_ADD_SECTION, name, type);
-                return;
-            }
-        }
-    }
-
-    // Handle adding a new entry
-    if (!strcasecmp(CFGSTUFF_ADD, com) && name != NULL) {
-        masterList *temp = realloc(listArray, (*pSize + 1) * sizeof(masterList));
-        if (temp) {
-            listArray = temp;
-            size_t ps = *pSize;
-            memset(listArray[ps].id, 0, sizeof(listArray[ps].id));
-            strncpy(listArray[ps].id, name, sizeof(listArray[ps].id) - 1);
-            (*pSize)++;
-            Send(s, CFGSTUFF_FORMATTING_TO_FROM_SECTION, com, name, CFGSTUFF_TO, list);
-            msleep(3000);
-        } else {
-            perror("realloc failed to add entry");
-        }
-    }
-
-    *pArray = listArray;
-}
-
-void cfgStuff(int s, char* com, char* text) {
-    char* pos;
-    char textBuffer[FUK_CFG_MAXCOUNT];
-    snprintf(textBuffer, sizeof(textBuffer), "%s", text);
-
-    char* list = strtok_r(textBuffer, " ", &pos);
-    if (!list) return;
-    
-    char* name = strtok_r(NULL, " ", &pos);
-    if (!name) return;
-
-    if (strstr(list, CFGSTUFF_MASTER)) {
-        processList(s, com, name, list, (void**)&master, &masterSz, CFGSTUFF_MASTER);
-    }
-    else if (strstr(list, CFGSTUFF_SAFE)) {
-        processList(s, com, name, list, (void**)&safe, &safeSz, CFGSTUFF_SAFE);
-    }
-    else if (strstr(list, CFGSTUFF_SHIT)) {
-        processList(s, com, name, list, (void**)&shit, &shitSz, CFGSTUFF_SHIT);
-    }
-    else if (strstr(list, CFGSTUFF_DES)) {
-        processList(s, com, name, list, (void**)&des, &desSz, CFGSTUFF_DES);
-    }
-}
-
-void OnJoin(int s, struct data* pb, char* szSpeaker) {
-    if (pb->hasop == 1 && time(NULL) - pb->lastTime < 5)
-        pb->flood++;
-    else
-        pb->flood = 0;
-    pb->lastTime = time(NULL);
-    if (pb->hasop == 1 && pb->flood < 500) {
-        for (int d = 0; d < desSz; d++) {
-            if (!strcasecmp(szSpeaker, des[d].id)) {
-                Send(s, SERVER_COMMAND_1, BASE_DESIGNATE, szSpeaker);
-                msleep(3000);
-                return;
-            }
-        }
-        for (int j = 0; j < safeSz; j++) {
-            if (strstr(szSpeaker, safe[j].id))
-                return;
-        }
-        for (int k = 0; k < masterSz; k++) {
-            if (!strcasecmp(szSpeaker, master[k].id))
-                return;
-        }
-        if (pb->tban == 1) {
-            if (strstr(szSpeaker, tag)) {
-                Send(s, SERVER_COMMAND_1, BASE_BAN, szSpeaker);
-                msleep(banWait * 1000);
-                return;
-            }
-        }
-        if (pb->lockdown == 1) {
-            Send(s, SERVER_COMMAND_1, BASE_BAN, szSpeaker);
-            msleep(banWait * 1000);
-            return;
-        }
-        for (int l = 0; l < shitSz; l++) {
-            if (strstr(szSpeaker, shit[l].id)) {
-                Send(s, SERVER_COMMAND_1, BASE_BAN, szSpeaker);
-                msleep(banWait * 1000);
-                return;
-            }
-        }
-    } 
-}
-
-void OnUserFlags(int s, struct data* pb, char* szSpeaker, u_long uFlags) {
-    if (uFlags == 18 && !strcasecmp(pb->username, szSpeaker)) {
-        pb->hasop = 1;
-        if (topic) {
-            Send(s, SERVER_COMMAND_1, BASE_TOPIC, topic);
-            msleep(3000);
-        }
-        return;
-    }
-    if (uFlags == 16 && !strcasecmp(pb->username, szSpeaker)) {
-        pb->hasop = 0;
-        pb->lockdown = 0;
-    }
+    if (master) { free(master); master = NULL; masterSz = 0; }
+    if (safe) { free(safe); safe = NULL; safeSz = 0; }
+    if (shit) { free(shit); shit = NULL; shitSz = 0; }
+    if (des) { free(des); des = NULL; desSz = 0; }
 }
 
 CommandID resolve_command(const char* com) {
@@ -259,6 +147,171 @@ CommandID resolve_command(const char* com) {
     return CMD_UNKNOWN;
 }
 
+void processList(int s, char* com, char* name, char* list, void **pArray, int *pSize, const char* type) {
+    masterList *listArray = (masterList *)(*pArray);
+    int x;
+    printf("Processing list: %s\n", list);  // ✅ Debug print
+    // Check if command is LIST
+    if (!strcasecmp(CFGSTUFF_LIST, com )) {
+        printf("Listing entries for %s (Size: %d)\n", type, *pSize);
+        if (*pSize == 0) {
+            Send(s, "The %s list is empty.\n", type);
+            msleep(1000);
+            return;
+        }
+        for (x = 0; x < *pSize; x++) {
+            //printf("Listing: %s\n", listArray[x].id);  // ✅ Debug print
+            Send(s, "%s\n", listArray[x].id);
+            msleep(1000);
+        }
+        return;
+    }
+    // REMOVE
+    else if (!strcasecmp(CFGSTUFF_REM, com) && (*name)) {
+        for (x = 0; x < *pSize; x++) {
+            if (!strcasecmp(listArray[x].id, name)) {
+                break;
+            }
+        }
+        if (x == *pSize) {
+            // Item not found; send error and return
+            Send(s, "Name %s not found in %s list.\n", name, type);
+            msleep(1000);
+            return;
+        }
+        // Once you find the entry, remove it:
+        memmove(&listArray[x], &listArray[x + 1],
+                ((*pSize) - x - 1) * sizeof(masterList));
+        (*pSize)--;
+    
+        masterList *temp = realloc(listArray, (*pSize) * sizeof(masterList));
+        if (temp || *pSize == 0) {  // Allow for NULL if list is empty
+            listArray = temp;
+            *pArray = listArray; // update pointer
+        } else {
+            Send(s, "realloc failed in processList removal");
+            msleep(1000);
+            return;
+        }
+        Send(s, "Removed %s from %s list.\n", name, type);
+        msleep(1000);
+        return;
+    }
+    // ADD
+    else if (!strcasecmp(CFGSTUFF_ADD, com) && (*name)) {
+        // Check if the entry already exists
+        for (x = 0; x < *pSize; x++) {
+            if (!strcasecmp(listArray[x].id, name)) {
+                Send(s, CFGSTUFF_FORMATTING_ADD_SECTION, name, type);
+                return;
+            }
+        }
+        // If not found, add a new entry
+        masterList *temp = realloc(listArray, (*pSize + 1) * sizeof(masterList));
+        if (temp) {
+            listArray = temp;
+            memset(listArray[*pSize].id, 0, sizeof(listArray[*pSize].id));
+            snprintf(listArray[*pSize].id, sizeof(listArray[*pSize].id), "%s", name);
+            (*pSize)++;
+            Send(s, "Added %s to %s list.\n", name, type);
+            *pArray = listArray; // update the pointer
+            msleep(1000);
+        } else {
+            perror("realloc failed in processList addition");
+        }
+        return;
+    }
+    else {
+        Send(s, "Invalid command or name.\n");
+        msleep(1000);
+    }
+}
+
+void cfgStuff(int s, char* com, char* text) {
+    char* pos;
+    char textBuffer[FUK_CFG_MAXCOUNT];
+    snprintf(textBuffer, sizeof(textBuffer), "%s", text);
+
+    char* list = strtok_r(textBuffer, " ", &pos);
+    if (!list) return;
+    char* name = strtok_r(NULL, " ", &pos);
+    if (!name) {
+        name = "";  // ✅ Ensures name is always a valid pointer
+    }
+    //printf("Processing cfgStuff: list=%s, name=%s\n", list, name);  // ✅ Debug print
+    if (strstr(list, CFGSTUFF_MASTER)) {
+        processList(s, com, name, list, (void**)&master, &masterSz, CFGSTUFF_MASTER);
+    }
+    else if (strstr(list, CFGSTUFF_SAFE)) {
+        processList(s, com, name, list, (void**)&safe, &safeSz, CFGSTUFF_SAFE);
+    }
+    else if (strstr(list, CFGSTUFF_SHIT)) {
+        processList(s, com, name, list, (void**)&shit, &shitSz, CFGSTUFF_SHIT);
+    }
+    else if (strstr(list, CFGSTUFF_DES)) {
+        processList(s, com, name, list, (void**)&des, &desSz, CFGSTUFF_DES);
+    }
+}
+
+void OnJoin(int s, struct data* pb, char* szSpeaker) {
+    if (pb->hasop == 1 && time(NULL) - pb->lastTime < 5)
+        pb->flood++;
+    else
+        pb->flood = 0;
+    pb->lastTime = time(NULL);
+    if (pb->hasop == 1 && pb->flood < 500) {
+        for (int d = 0; d < desSz; d++) {
+            if (!strcasecmp(szSpeaker, des[d].id)) {
+                Send(s, SERVER_COMMAND_1, BASE_DESIGNATE, szSpeaker);
+                msleep(1000);
+                return;
+            }
+        }
+        for (int j = 0; j < safeSz; j++) {
+            if (strstr(szSpeaker, safe[j].id))
+                return;
+        }
+        for (int k = 0; k < masterSz; k++) {
+            if (!strcasecmp(szSpeaker, master[k].id))
+                return;
+        }
+        if (pb->tban == 1) {
+            if (strstr(szSpeaker, tag)) {
+                Send(s, SERVER_COMMAND_1, BASE_BAN, szSpeaker);
+                msleep(banWait * 1000);
+                return;
+            }
+        }
+        if (pb->lockdown == 1) {
+            Send(s, SERVER_COMMAND_1, BASE_BAN, szSpeaker);
+            msleep(banWait * 1000);
+            return;
+        }
+        for (int l = 0; l < shitSz; l++) {
+            if (strstr(szSpeaker, shit[l].id)) {
+                Send(s, SERVER_COMMAND_1, BASE_BAN, szSpeaker);
+                msleep(banWait * 1000);
+                return;
+            }
+        }
+    } 
+}
+
+void OnUserFlags(int s, struct data* pb, char* szSpeaker, u_long uFlags) {
+    if (uFlags == 18 && !strcasecmp(pb->username, szSpeaker)) {
+        pb->hasop = 1;
+        if (topic[0] != '\0') {
+            Send(s, SERVER_COMMAND_1, BASE_TOPIC, topic);
+            msleep(1000);
+        }
+        return;
+    }
+    if (uFlags == 16 && !strcasecmp(pb->username, szSpeaker)) {
+        pb->hasop = 0;
+        pb->lockdown = 0;
+    }
+}
+
 // The OnTalk function
 void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
 {
@@ -270,6 +323,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
 
     // Check if speaker is in master list
     for (i = 0; i < masterSz; i++) {
+        //printf("master[%d].id = %s\n", i, master[i].id);
         if (!strcasecmp(szSpeaker, master[i].id)) {
             doStuff = 1;
             break;
@@ -278,11 +332,11 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
 
     // If speaker not recognized, return
     if (!doStuff) return;
-
+    //printf("is in master list\n");
     // Check if the message starts with the bot's trigger or a '?' 
     if (szEventText[0] == pb->trigger[0] || szEventText[0] == '?') {
         // Create a buffer for the command string (everything after the first character)
-        char tmpBuf[256] = {0};
+        char tmpBuf[SEND_BUFFER_SIZE] = {0};
         strncpy(tmpBuf, szEventText + 1, sizeof(tmpBuf) - 1);
 
         // Use strsep to separate the first token (command) from the rest (arguments)
@@ -296,13 +350,14 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
         CommandID cmd = resolve_command(com);
 
         // Print the command ID for verification
-        printf("Resolved command ID: %d\n", cmd);
+        //printf("Resolved command ID: %d\n", cmd);
         
         // Switch on the enum for clearer code
         switch (cmd)
         {
             case CMD_CFGSTUFF_LIST:
                 if (ptrDat != NULL && pb->botNum == 0) {
+                    //printf("Calling cfgStuff for list\n");
                     cfgStuff(s, com, ptrDat);
                 }
                 break;
@@ -310,6 +365,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
             case CMD_CFGSTUFF_ADD:
             {
                 if (ptrDat != NULL && pb->botNum == 0) {
+                    //printf("Calling cfgStuff for add\n");
                     cfgStuff(s,com, ptrDat);
                     save_cfg();
                 }
@@ -319,6 +375,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
             case CMD_CFGSTUFF_REM:
             {
                 if (ptrDat != NULL && pb->botNum == 0) {
+                    //printf("Calling cfgStuff for remove\n");
                     cfgStuff(s, com, ptrDat);
                     save_cfg();
                 }
@@ -331,7 +388,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     if (pb->botNum == 0) {
                         Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker,
                              BASE_TRIGGER, BASE_COLON, pb->trigger);
-                        msleep(3000);
+                        msleep(1000);
                     }
                 } else {
                     // Set new trigger
@@ -346,7 +403,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                         save_cfg();
                         Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker,
                              BASE_TRIGGER, BASE_ISNOW, pb->trigger);
-                        msleep(3000);
+                        msleep(1000);
                     } else {
                         memset(pb->trigger, 0, sizeof(pb->trigger));
                         strncpy(pb->trigger, ptrDat, sizeof(pb->trigger) - 1);
@@ -361,7 +418,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     if (pb->botNum == 0) {
                         Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker,
                              BASE_HOME, BASE_COLON, pb->channel);
-                        msleep(3000);
+                        msleep(1000);
                     }
                 } else {
                     if (pb->botNum == 0) {
@@ -374,7 +431,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                         save_cfg();
                         Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker,
                              BASE_HOME, BASE_ISNOW, pb->channel);
-                        msleep(3000);
+                        msleep(1000);
                     } else {
                         memset(pb->channel, 0, sizeof(pb->channel));
                         strncpy(pb->channel, ptrDat, sizeof(pb->channel) - 1);
@@ -388,25 +445,25 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                 if (ptrDat == NULL) {
                     if (pb->hasop == 1) {
                         Send(s, SERVER_COMMAND_1, SERVER_TOPIC, topic);
-                        msleep(3000);
+                        msleep(1000);
                     } else if (pb->botNum == 0) {
                         Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker,
                              BASE_TOPIC, BASE_COLON, topic);
-                        msleep(3000);
+                        msleep(1000);
                     }
                 } else {
                     if (pb->hasop == 1) {
                         memset(topic, 0, sizeof(topic));
                         strncpy(topic, ptrDat, sizeof(topic) - 1);
                         Send(s, SERVER_COMMAND_1, SERVER_TOPIC, topic);
-                        msleep(3000);
+                        msleep(1000);
                     } else if (pb->botNum == 0) {
                         memset(topic, 0, sizeof(topic));
                         strncpy(topic, ptrDat, sizeof(topic) - 1);
                         save_cfg();
                         Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker,
                              BASE_TOPIC, BASE_ISNOW, topic);
-                        msleep(3000);
+                        msleep(1000);
                     }
                 }
                 break;
@@ -418,14 +475,14 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     if (ptrDat == NULL) {
                         Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker,
                              BASE_BACKUP, BASE_COLON, backup);
-                        msleep(3000);
+                        msleep(1000);
                     } else {
                         memset(backup, 0, sizeof(backup));
                         strncpy(backup, ptrDat, sizeof(backup) - 1);
                         save_cfg();
                         Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker,
                              BASE_BACKUP, BASE_ISNOW, backup);
-                        msleep(3000);
+                        msleep(1000);
                     }
                 }
                 break;
@@ -437,7 +494,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     if (ptrDat == NULL) {
                         Send(s, ON_COMMAND_REPLY_0S, SERVER_WHISPER, szSpeaker,
                              BASE_SERVER, BASE_COLON, pb->server);
-                        msleep(3000);
+                        msleep(1000);
                     }
                 }
                 break;
@@ -449,13 +506,13 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     if (ptrDat == NULL) {
                         Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
                              BASE_THREADS, BASE_COLON, pb->threads);
-                        msleep(3000);
+                        msleep(1000);
                     } else {
                         threads = atoi(ptrDat);
                         save_cfg();
                         Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
                              BASE_THREADS, BASE_ISNOW, pb->threads);
-                        msleep(3000);
+                        msleep(1000);
                     }
                 }
                 break;
@@ -468,7 +525,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     if (ptrDat == NULL) {
                         Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
                              BASE_PORT, BASE_COLON, pb->port);
-                        msleep(3000);
+                        msleep(1000);
                     } else {
                         // Update both global and pb->port if that is your intention
                         port = atoi(ptrDat);
@@ -476,7 +533,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                         save_cfg();
                         Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
                              BASE_PORT, BASE_ISNOW, port);
-                        msleep(3000);
+                        msleep(1000);
                     }
                 }
                 break;
@@ -488,13 +545,13 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     if (ptrDat == NULL) {
                         Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
                              BASE_DELAY, BASE_COLON, delay);
-                        msleep(3000);
+                        msleep(1000);
                     } else {
                         delay = atoi(ptrDat);
                         save_cfg();
                         Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
                              BASE_DELAY, BASE_ISNOW, delay);
-                        msleep(3000);
+                        msleep(1000);
                     }
                 }
                 break;
@@ -505,7 +562,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                 if (ptrDat == NULL) {
                     Send(s, ON_COMMAND_REPLY_1, SERVER_WHISPER, szSpeaker,
                          BASE_DELAY, BASE_SCATTER, pb->delay2);
-                    msleep(3000);
+                    msleep(1000);
                 }
                 break;
             }
@@ -516,13 +573,13 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     if (ptrDat == NULL) {
                         Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
                              BASE_SCATTER, BASE_COLON, scatter);
-                        msleep(3000);
+                        msleep(1000);
                     } else {
                         scatter = atoi(ptrDat);
                         save_cfg();
                         Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
                              BASE_SCATTER, BASE_ISNOW, scatter);
-                        msleep(3000);
+                        msleep(1000);
                     }
                 }
                 break;
@@ -534,13 +591,13 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     if (ptrDat == NULL) {
                         Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
                              BASE_BANWAIT, BASE_COLON, banWait);
-                        msleep(3000);
+                        msleep(1000);
                     } else {
                         banWait = atoi(ptrDat) * 1000;
                         save_cfg();
                         Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
                              BASE_BANWAIT, BASE_ISNOW, (banWait / 1000));
-                        msleep(3000);
+                        msleep(1000);
                     }
                 }
                 break;
@@ -552,13 +609,13 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     if (ptrDat == NULL) {
                         Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
                              BASE_CONWAIT, BASE_COLON, conWait);
-                        msleep(3000);
+                        msleep(1000);
                     } else {
                         conWait = atoi(ptrDat);
                         save_cfg();
                         Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
                              BASE_CONWAIT, BASE_ISNOW, conWait);
-                        msleep(3000);
+                        msleep(1000);
                     }
                 }
                 break;
@@ -568,7 +625,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
             {
                 if (ptrDat != NULL) {
                     Send(s, ON_COMMAND_REPLY_2, ptrDat);
-                    msleep(3000);
+                    msleep(1000);
                 }
                 break;
             }
@@ -577,20 +634,24 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
             {
                 if (pb->botNum == 0) {
                     Send(s, SERVER_COMMAND_2, SERVER_WHISPER, szSpeaker, FUK_VERSION);
-                    msleep(3000);
+                    msleep(1000);
                 }
                 break;
             }
 
             case CMD_BASE_QUIT:
             {
-                exit(0);
-                break;  // unreachable, but keep for clarity
+                shutDown = 1;
+                close(s);
+                s = -1;
+                break;
             }
 
             case CMD_BASE_RECON:
             {
+                recon = 1;
                 close(s);
+                s = -1;
                 break;
             }
 
@@ -599,7 +660,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                 // Original code snippet
                 Send(s, "/%s %s %d to login to %s with actual delay of %d.\r\n",
                      SERVER_WHISPER, szSpeaker, pb->place, pb->server, pb->delay2);
-                msleep(3000);
+                msleep(1000);
                 break;
             }
 
@@ -622,7 +683,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                         }
                         pclose(fp1);
                     }
-                    msleep(3000);
+                    msleep(1000);
                 }
                 break;
             }
@@ -631,7 +692,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
             {
                 if (ptrDat != NULL && pb->hasop == 1) {
                     Send(s, SERVER_COMMAND_1, SERVER_BAN, ptrDat);
-                    msleep(3000);
+                    msleep(1000);
                 }
                 break;
             }
@@ -641,7 +702,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                 if (ptrDat != NULL && pb->hasop == 1) {
                     pb->lockdown = 0;
                     Send(s, SERVER_COMMAND_1, SERVER_UNBAN, ptrDat);
-                    msleep(3000);
+                    msleep(1000);
                 }
                 break;
             }
@@ -650,7 +711,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
             {
                 if (ptrDat != NULL && pb->hasop == 1) {
                     Send(s, SERVER_COMMAND_1, SERVER_KICK, ptrDat);
-                    msleep(3000);
+                    msleep(1000);
                 }
                 break;
             }
@@ -659,7 +720,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
             {
                 if (ptrDat != NULL) {
                     Send(s, SERVER_COMMAND_1, SERVER_JOIN, ptrDat);
-                    msleep(3000);
+                    msleep(1000);
                 }
                 break;
             }
@@ -667,7 +728,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
             case CMD_SERVER_REJOIN:
             {
                 Send(s, SERVER_COMMAND_0, SERVER_REJOIN);
-                msleep(3000);
+                msleep(1000);
                 break;
             }
 
@@ -680,7 +741,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     } else {
                         Send(s, SERVER_COMMAND_1, SERVER_DESIGNATE, szSpeaker);
                     }
-                    msleep(3000);
+                    msleep(1000);
                 }
                 break;
             }
@@ -691,10 +752,10 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     if (pb->des != 0) {
                         pb->des = 0;
                         Send(s, SERVER_COMMAND_0, SERVER_RESIGN);
-                        msleep(3000);
+                        msleep(1000);
                     } else {
                         Send(s, ON_COMMAND_REPLY_2, BASE_NO_HEIR_TEXT);
-                        msleep(3000);
+                        msleep(1000);
                     }
                 }
                 break;
@@ -704,7 +765,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
             {
                 if (pb->botNum == 0) {
                     Send(s, SERVER_COMMAND_0, SERVER_UPTIME);
-                    msleep(3000);
+                    msleep(1000);
                 }
                 break;
             }
@@ -718,7 +779,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     } else {
                         Send(s, SERVER_COMMAND_1, SERVER_DESIGNATE, szSpeaker);
                     }
-                    msleep(3000);
+                    msleep(1000);
                 }
                 break;
             }
@@ -728,9 +789,9 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                 if (pb->hasop == 1) {
                     pb->lockdown = 1;
                     Send(s, SERVER_COMMAND_2, SERVER_TOPIC, topic, BASE_CHANLOCKED);
-                    msleep(3000);
+                    msleep(1000);
                     Send(s, SERVER_COMMAND_1, SERVER_WHO, pb->currChan);
-                    msleep(3000);
+                    msleep(1000);
                 }
                 break;
             }
@@ -740,7 +801,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                 pb->lockdown = 0;
                 if (pb->hasop == 1) {
                     Send(s, SERVER_COMMAND_1, SERVER_TOPIC, topic);
-                    msleep(3000);
+                    msleep(1000);
                 }
                 break;
             }
@@ -749,7 +810,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
             {
                 if (pb->hasop == 1) {
                     Send(s, SERVER_COMMAND_1, SERVER_WHO, pb->currChan);
-                    msleep(3000);
+                    msleep(1000);
                 }
                 break;
             }
@@ -762,11 +823,11 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                         memset(tag, 0, sizeof(tag));
                         strcpy(tag, ptrDat);
                         Send(s, SERVER_COMMAND_1, SERVER_WHO, pb->currChan);
-                        msleep(3000);
+                        msleep(1000);
                     } else {
                         pb->tban = 0;
                         Send(s, ON_COMMAND_REPLY_2, BASE_TAGBAN_DISABLED);
-                        msleep(3000);
+                        msleep(1000);
                     }
                 }
                 break;
@@ -776,7 +837,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
             {
                 if (pb->botNum == 0) {
                     Send(s, ON_COMMAND_REPLY_3, SERVER_WHISPER, szSpeaker, pb->conTime);
-                    msleep(3000);
+                    msleep(1000);
                 }
                 break;
             }
@@ -788,7 +849,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     getrusage(RUSAGE_SELF, &r_usage);
                     // r_usage.ru_maxrss is often in KB on Linux, but usage may vary by system
                     Send(s, ON_COMMAND_REPLY_4, SERVER_WHISPER, szSpeaker, r_usage.ru_maxrss);
-                    msleep(3000);
+                    msleep(1000);
                 }
                 break;
             }
@@ -815,25 +876,25 @@ void OnChannel(int s, struct data* pb, char* szEventText) {
     if (!strcasecmp(szEventText, pb->channel)) {
         pb->chanham = 0;
         Send(s, SERVER_COMMAND_0, SERVER_PLACE, NULL);
-        msleep(3000);
+        msleep(1000);
     }
     else if (!strcasecmp(szEventText, CHANNEL_VOID)) {
         pb->chanham = 1;
         Send(s, SERVER_COMMAND_0, SERVER_PLACE, NULL);
-        msleep(3000);
+        msleep(1000);
 
         // Ensure 'backup' is properly initialized before use
         extern char backup[MAX_CFG_LEN];  // Assumption: backup is declared elsewhere
         if (backup[0] != '\0') {  // Ensure backup is not empty before using it
             Send(s, SERVER_COMMAND_1, SERVER_JOIN, backup);
-            msleep(3000);
+            msleep(1000);
         }
     }
 }
 
 void OnInfo(int s, struct data *pb, char *szEventText) {
     if (!szEventText) return;
-    char szEventTextCopy[512];  // Allocate fixed buffer
+    char szEventTextCopy[EVENT_TEXT_SIZE];  // Allocate fixed buffer
     strncpy(szEventTextCopy, szEventText, sizeof(szEventTextCopy) - 1);
     szEventTextCopy[sizeof(szEventTextCopy) - 1] = '\0';
 
@@ -848,7 +909,7 @@ void OnInfo(int s, struct data *pb, char *szEventText) {
         if (pb->op != 0 && pb->hasop != 0) {
             pb->op = 0;
             Send(s, SERVER_COMMAND_0, SERVER_RESIGN);
-            msleep(3000);
+            msleep(1000);
         }
         return;
     }
@@ -871,14 +932,14 @@ void OnInfo(int s, struct data *pb, char *szEventText) {
         tmp = strtok_r(szEventTextCopy, "\r\n", &pos);
         if (tmp) {
             Send(s, SERVER_BASE_SPEAK, tmp);
-            msleep(3000);
+            msleep(1000);
         }
         return;
     }
     else if (strstr(szEventTextCopy, BASE_YOUWEREKICKED)) {
         pb->chanham = 1;
         Send(s, SERVER_COMMAND_1, SERVER_JOIN, backup);
-        msleep(3000);
+        msleep(1000);
         return;
     }
     else {
@@ -928,7 +989,7 @@ void OnPing(int s, struct data *pb, char *szEventText) {
         Send(s, SERVER_COMMAND_1, SERVER_PONG, szEventText);
     }
     
-    msleep(3000);  // Ensure `pb` remains valid if this runs in a multi-threaded environment
+    msleep(1000);  // Ensure `pb` remains valid if this runs in a multi-threaded environment
 }
 
 void Dispatch(int s, struct data *pb, char *szEventText) {
@@ -944,9 +1005,9 @@ void Dispatch(int s, struct data *pb, char *szEventText) {
 
     eventType = strtok_r(szEventText, " ", &pos);
     if (!eventType) return;  // Ensure we have an event type
-    //printf("Received event: %s\n", eventType);
     if (!strcasecmp(eventType, "USER")) {
         USER_CMD = strtok_r(NULL, " ", &pos);
+        //printf("USER CMD: %s\n", USER_CMD);
         if (!USER_CMD) return;
 
         if (!strcasecmp(USER_CMD, "IN") || !strcasecmp(USER_CMD, "UPDATE") || !strcasecmp(USER_CMD, "JOIN")) {
@@ -1030,7 +1091,9 @@ void message_loop(int s, struct data* pb) {
         FD_SET(s, &fds);
         tv.tv_sec = 1;
         tv.tv_usec = 0;
-
+        if (shutDown == 1 || recon == 1) {
+            break;
+        }
         n = select(s + 1, &fds, NULL, NULL, &tv);
         if (n > 0) {
             int nNumToRead = BUFFSIZE - nBufLen - nBufPos;
@@ -1048,7 +1111,7 @@ void message_loop(int s, struct data* pb) {
 
             n = recv(s, stageBuf + nBufPos + nBufLen, nNumToRead, 0);
             if (n <= 0) {
-                return; // Handle disconnection or error
+                return ; // Handle disconnection or error
             }
 
             nBufLen += n;
@@ -1085,150 +1148,198 @@ void message_loop(int s, struct data* pb) {
         }
         msleep(500); // Small delay to prevent CPU overuse
     }
+    //printf(" %s Exiting message loop\n", pb->username);
 }
 
 int save_cfg() {
-    FILE* cfg;
-    int i;
-    cfg = fopen(FUK_CFG, FUK_CFG_WRITE);
+    FILE* cfg = fopen("config.json", "w");
     if (!cfg) {
-        printf(FUK_CFG_ERROR_O, FUK_CFG);
+        perror("Error opening config.json\n");
         return -1;
     }
+    int i;
+    // Create JSON object
+    cJSON *json = cJSON_CreateObject();
 
-    fprintf(cfg, FUK_CFG_PRINTFS, CFGSTUFF_USERNAME, username);
-    fprintf(cfg, FUK_CFG_PRINTFS, CFGSTUFF_PASSWORD, password);
-    fprintf(cfg, FUK_CFG_PRINTFS, CFGSTUFF_HOME, channel);
-    fprintf(cfg, FUK_CFG_PRINTFS, CFGSTUFF_SERVER, server);
-    fprintf(cfg, FUK_CFG_PRINTFI, CFGSTUFF_PORT, port);
-    fprintf(cfg, FUK_CFG_PRINTFS, CFGSTUFF_BIND, bindaddr);
-    fprintf(cfg, FUK_CFG_PRINTFS, CFGSTUFF_TRIGGER, trigger);
-    fprintf(cfg, FUK_CFG_PRINTFI, CFGSTUFF_THREADS, threads);
-    fprintf(cfg, FUK_CFG_PRINTFI, CFGSTUFF_DELAY, delay);
-    fprintf(cfg, FUK_CFG_PRINTFI, CFGSTUFF_SCATTER, scatter);
-    fprintf(cfg, FUK_CFG_PRINTFI, CFGSTUFF_CONWAIT, conWait);
-    fprintf(cfg, FUK_CFG_PRINTFI, CFGSTUFF_BANWAIT, banWait);
-    fprintf(cfg, FUK_CFG_PRINTFI, CFGSTUFF_NUMBOTS, numBots);
-    fprintf(cfg, FUK_CFG_PRINTFS, CFGSTUFF_BACKUPCHAN, backup);
-    fprintf(cfg, FUK_CFG_PRINTFS, CFGSTUFF_TOPIC, topic);
-    fprintf(cfg, "\n");
+    // Add string values
+    cJSON_AddStringToObject(json, CFGSTUFF_USERNAME, username);
+    cJSON_AddStringToObject(json, CFGSTUFF_PASSWORD, password);
+    cJSON_AddStringToObject(json, CFGSTUFF_HOME, channel);
+    cJSON_AddStringToObject(json, CFGSTUFF_SERVER, server);
+    cJSON_AddNumberToObject(json, CFGSTUFF_PORT, port);
+    cJSON_AddStringToObject(json, CFGSTUFF_BIND, bindaddr);
+    cJSON_AddStringToObject(json, CFGSTUFF_TRIGGER, trigger);
+    cJSON_AddNumberToObject(json, CFGSTUFF_THREADS, threads);
+    cJSON_AddNumberToObject(json, CFGSTUFF_DELAY, delay);
+    cJSON_AddNumberToObject(json, CFGSTUFF_SCATTER, scatter);
+    cJSON_AddNumberToObject(json, CFGSTUFF_CONWAIT, conWait);
+    cJSON_AddNumberToObject(json, CFGSTUFF_BANWAIT, banWait);
+    cJSON_AddNumberToObject(json, CFGSTUFF_NUMBOTS, numBots);
+    cJSON_AddStringToObject(json, CFGSTUFF_BACKUPCHAN, backup);
+    cJSON_AddStringToObject(json, CFGSTUFF_TOPIC, topic);
+    
+    cJSON *masterArray = cJSON_CreateArray();
+    cJSON *safeArray = cJSON_CreateArray();
+    cJSON *desArray = cJSON_CreateArray();
+    cJSON *shitArray = cJSON_CreateArray();
+
     for (i = 0; i < masterSz; i++) {
-        fprintf(cfg, FUK_CFG_PRINTFS, CFGSTUFF_MASTER, master[i].id);
+        cJSON_AddItemToArray(masterArray, cJSON_CreateString(master[i].id));
     }
-    fprintf(cfg, "\n");
     for (i = 0; i < safeSz; i++) {
-        fprintf(cfg, FUK_CFG_PRINTFS, CFGSTUFF_SAFE, safe[i].id);
+        cJSON_AddItemToArray(safeArray, cJSON_CreateString(safe[i].id));
     }
-    fprintf(cfg, "\n");
     for (i = 0; i < desSz; i++) {
-        fprintf(cfg, FUK_CFG_PRINTFS, CFGSTUFF_DES, des[i].id);
+        cJSON_AddItemToArray(desArray, cJSON_CreateString(des[i].id));
     }
-    fprintf(cfg, "\n");
     for (i = 0; i < shitSz; i++) {
-        fprintf(cfg, FUK_CFG_PRINTFS, CFGSTUFF_SHIT, shit[i].id);
+        cJSON_AddItemToArray(shitArray, cJSON_CreateString(shit[i].id));
     }
+
+    cJSON_AddItemToObject(json, "master", masterArray);
+    cJSON_AddItemToObject(json, "safe", safeArray);
+    cJSON_AddItemToObject(json, "des", desArray);
+    cJSON_AddItemToObject(json, "shit", shitArray);
+
+    // Convert JSON object to a string
+    char *json_string = cJSON_Print(json);
+
+    // Save to file
+    fprintf(cfg, "%s", json_string);
     fclose(cfg);
 
-    return 1; /* apparently i havent fixed this yet */
+    // Cleanup
+    free(json_string);
+    cJSON_Delete(json);
+
+    //printf("Config saved to config.json\n");
+    return 0;
+}
+
+void json_safe_copy(cJSON *json, const char *key, char *dest, size_t dest_size) {
+    if (!json || !key || !dest || dest_size == 0) {
+        return;
+    }
+
+    cJSON *item = cJSON_GetObjectItem(json, key);
+    if (item && cJSON_IsString(item) && item->valuestring) {
+        strncpy(dest, item->valuestring, dest_size - 1);
+        dest[dest_size - 1] = '\0'; // Ensure null termination
+    }
 }
 
 int read_config() {
-    FILE* cfg;
-    int i = 0;
-    int j = 0;
-    int k = 0;
-    int d = 0;
-    int line = 0;
-    cfg = fopen(FUK_CFG, FUK_CFG_READBINARY);
+    FILE* cfg = fopen("config.json", "r");
     if (!cfg) {
-        printf(FUK_CFG_ERROR, FUK_CFG);
+        perror("Error opening config.json\n");
         return -1;
     }
-    else {
-        char r[1024];
-        while (fgets(r, 1024, cfg)) {
-            line++;
-            strtok(r, "\r\n");
-            if (!memcmp(r, FUK_CFG_USERNAME, strlen(FUK_CFG_USERNAME))) {
-                memset(username, '\0', sizeof(username));
-                strcpy(username, (r + strlen(FUK_CFG_USERNAME)));
-            }
-            else if (!memcmp(r, FUK_CFG_PASSWORD, strlen(FUK_CFG_PASSWORD))) {
-                memset(password, '\0', sizeof(password));
-                strcpy(password, (r + strlen(FUK_CFG_PASSWORD)));
-            }
-            else if (!memcmp(r, FUK_CFG_HOME, strlen(FUK_CFG_HOME))) {
-                memset(channel, '\0', sizeof(channel));
-                strcpy(channel, (r + strlen(FUK_CFG_HOME)));
-            }
-            else if (!memcmp(r, FUK_CFG_SERVER, strlen(FUK_CFG_SERVER))) {
-                memset(server, '\0', sizeof(server));
-                strcpy(server, (r + strlen(FUK_CFG_SERVER)));
-            }
-            else if (!memcmp(r, FUK_CFG_PORT, strlen(FUK_CFG_PORT))) {
-                port = atoi(r + strlen(FUK_CFG_PORT));
-            }
-            else if (!memcmp(r, FUK_CFG_BIND, strlen(FUK_CFG_BIND))) {
-                memset(bindaddr, '\0', sizeof(server));
-                strcpy(bindaddr, (r + strlen(FUK_CFG_BIND)));
-            }
-            else if (!memcmp(r, FUK_CFG_TRIGGER, strlen(FUK_CFG_TRIGGER))) {
-                memset(trigger, '\0', sizeof(trigger));
-                strcpy(trigger, (r + strlen(FUK_CFG_TRIGGER)));
-            }
-            else if (!memcmp(r, FUK_CFG_THREADS, strlen(FUK_CFG_THREADS))) {
-                threads = atoi(r + strlen(FUK_CFG_THREADS));
-            }
-            else if (!memcmp(r, FUK_CFG_DELAY, strlen(FUK_CFG_DELAY))) {
-                delay = atoi(r + strlen(FUK_CFG_DELAY));
-            }
-            else if (!memcmp(r, FUK_CFG_SCATTER, strlen(FUK_CFG_SCATTER))) {
-                scatter = atoi(r + strlen(FUK_CFG_SCATTER));
-            }
-            else if (!memcmp(r, FUK_CFG_BACKUPCHAN, strlen(FUK_CFG_BACKUPCHAN))) {
-                memset(backup, '\0', sizeof(backup));
-                strcpy(backup, (r + strlen(FUK_CFG_BACKUPCHAN)));
-            }
-            else if (!memcmp(r, FUK_CFG_TOPIC, strlen(FUK_CFG_TOPIC))) {
-                memset(topic, '\0', sizeof(topic));
-                strcpy(topic, (r + strlen(FUK_CFG_TOPIC)));
-            }
-            else if (!memcmp(r, FUK_CFG_BANWAIT, strlen(FUK_CFG_BANWAIT))) {
-                banWait = atoi(r + strlen(FUK_CFG_BANWAIT));
-            }
-            else if (!memcmp(r, FUK_CFG_CONWAIT, strlen(FUK_CFG_CONWAIT))) {
-                conWait = atoi(r + strlen(FUK_CFG_CONWAIT));
-            }
-            else if (!memcmp(r, FUK_CFG_NUMBOTS, strlen(FUK_CFG_NUMBOTS))) {
-                numBots = atoi(r + strlen(FUK_CFG_NUMBOTS));
-            }
-            else if (!memcmp(r, FUK_CFG_MASTER, strlen(FUK_CFG_MASTER))) {
-                master = (masterList*)reallocarray(master, ++masterSz, sizeof(masterList));
-                memset(master[i].id, '\0', sizeof(master[i].id));
-                strcpy(master[i].id, (r + strlen(FUK_CFG_MASTER)));
-                i++;
-            }
-            else if (!memcmp(r, FUK_CFG_SAFE, strlen(FUK_CFG_SAFE))) {
-                safe = (safeList*)reallocarray(safe, ++safeSz, sizeof(safeList));
-                memset(safe[j].id, '\0', sizeof(safe[j].id));
-                strcpy(safe[j].id, (r + strlen(FUK_CFG_SAFE)));
-                j++;
-            }
-            else if (!memcmp(r, FUK_CFG_SHIT, strlen(FUK_CFG_SHIT))) {
-                shit = (shitList*)reallocarray(shit, ++shitSz, sizeof(shitList));
-                memset(shit[k].id, '\0', sizeof(shit[k].id));
-                strcpy(shit[k].id, (r + strlen(FUK_CFG_SHIT)));
-                k++;
-            }
-            else if (!memcmp(r, FUK_CFG_DES, strlen(FUK_CFG_DES))) {
-                des = (desList*)reallocarray(des, ++desSz, sizeof(desList));
-                memset(des[d].id, '\0', sizeof(des[d].id));
-                strcpy(des[d].id, (r + strlen(FUK_CFG_DES)));
-                d++;
-            }
-        }
+    //printf("Reading config.json...\n");
+
+    // Read file content
+    fseek(cfg, 0, SEEK_END);
+    long length = ftell(cfg);
+    fseek(cfg, 0, SEEK_SET);
+    char *data = (char*) malloc(length + 1);
+    if (!data) {
         fclose(cfg);
-    } 
+        perror("Memory allocation failed");
+        return -1;
+    }
+    fread(data, 1, length, cfg);
+    fclose(cfg);
+    data[length] = '\0';
+
+    // Parse JSON
+    cJSON *json = cJSON_Parse(data);
+    if (!json) {
+        perror("Error parsing JSON\n");
+        free(data);
+        return -1;
+    }
+    //printf("JSON has been parsed\n");
+
+    // Copy individual values safely
+    json_safe_copy(json, "username", username, sizeof(username));
+    json_safe_copy(json, "password", password, sizeof(password));
+    json_safe_copy(json, "home", channel, sizeof(channel));
+    json_safe_copy(json, "server", server, sizeof(server));
+    json_safe_copy(json, "bind", bindaddr, sizeof(bindaddr));
+    json_safe_copy(json, "trigger", trigger, sizeof(trigger));
+    json_safe_copy(json, "backupchan", backup, sizeof(backup));
+    json_safe_copy(json, "topic", topic, sizeof(topic));
+
+    // Read integer values safely
+    cJSON *portItem = cJSON_GetObjectItem(json, "port");
+    port = (portItem && cJSON_IsNumber(portItem)) ? portItem->valueint : 6112;
+
+    cJSON *threadsItem = cJSON_GetObjectItem(json, "threads");
+    threads = (threadsItem && cJSON_IsNumber(threadsItem)) ? threadsItem->valueint : 1;
+
+    cJSON *numBotsItem = cJSON_GetObjectItem(json, "numbots");
+    numBots = (numBotsItem && cJSON_IsNumber(numBotsItem)) ? numBotsItem->valueint : 1;
+
+    cJSON *delayItem = cJSON_GetObjectItem(json, "delay");
+    delay = (delayItem && cJSON_IsNumber(delayItem)) ? delayItem->valueint : 100;
+
+    cJSON *scatterItem = cJSON_GetObjectItem(json, "scatter");
+    scatter = (scatterItem && cJSON_IsNumber(scatterItem)) ? scatterItem->valueint : 50;
+
+    cJSON *conwaitItem = cJSON_GetObjectItem(json, "conwait");
+    conWait = (conwaitItem && cJSON_IsNumber(conwaitItem)) ? conwaitItem->valueint : 5;
+
+    cJSON *banwaitItem = cJSON_GetObjectItem(json, "banwait");
+    banWait = (banwaitItem && cJSON_IsNumber(banwaitItem)) ? banwaitItem->valueint : 0;
+
+    // Read and allocate arrays
+    cJSON *masterArray = cJSON_GetObjectItem(json, "master");
+    cJSON *safeArray = cJSON_GetObjectItem(json, "safe");
+    cJSON *desArray = cJSON_GetObjectItem(json, "des");
+    cJSON *shitArray = cJSON_GetObjectItem(json, "shit");
+
+    masterSz = masterArray ? cJSON_GetArraySize(masterArray) : 0;
+    safeSz   = safeArray   ? cJSON_GetArraySize(safeArray)   : 0;
+    desSz    = desArray    ? cJSON_GetArraySize(desArray)    : 0;
+    shitSz   = shitArray   ? cJSON_GetArraySize(shitArray)   : 0;
+
+    allocate_lists();  // Allocate memory for master, safe, des, and shit arrays
+
+    for (int i = 0; i < masterSz; i++) {
+        cJSON *item = cJSON_GetArrayItem(masterArray, i);
+        if (item && cJSON_IsString(item)) {
+            strncpy(master[i].id, item->valuestring, sizeof(master[i].id) - 1);
+            master[i].id[sizeof(master[i].id) - 1] = '\0';
+        }
+    }
+
+    for (int i = 0; i < safeSz; i++) {
+        cJSON *item = cJSON_GetArrayItem(safeArray, i);
+        if (item && cJSON_IsString(item)) {
+            strncpy(safe[i].id, item->valuestring, sizeof(safe[i].id) - 1);
+            safe[i].id[sizeof(safe[i].id) - 1] = '\0';
+        }
+    }
+
+    for (int i = 0; i < desSz; i++) {
+        cJSON *item = cJSON_GetArrayItem(desArray, i);
+        if (item && cJSON_IsString(item)) {
+            strncpy(des[i].id, item->valuestring, sizeof(des[i].id) - 1);
+            des[i].id[sizeof(des[i].id) - 1] = '\0';
+        }
+    }
+
+    for (int i = 0; i < shitSz; i++) {
+        cJSON *item = cJSON_GetArrayItem(shitArray, i);
+        if (item && cJSON_IsString(item)) {
+            strncpy(shit[i].id, item->valuestring, sizeof(shit[i].id) - 1);
+            shit[i].id[sizeof(shit[i].id) - 1] = '\0';
+        }
+    }
+
+    // Free memory safely
+    cJSON_Delete(json);
+    free(data);
+
     return 0;
 }
       
@@ -1241,11 +1352,14 @@ int Connect(int s, struct timeval tv, struct data* pb) {
     socklen_t errlen = sizeof(err);
 
     // Resolve server address
-    hints.ai_family = AF_INET;
+    hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
 
-    if (getaddrinfo(pb->server, NULL, &hints, &res) != 0) {
-        return -1;  // Address resolution failed
+    int gai_err = getaddrinfo(pb->server, NULL, &hints, &res);
+    if (gai_err != 0) {
+        if (res) freeaddrinfo(res);
+        printf("Address resolution failed: %s\n", gai_strerror(gai_err));
+        return -1;
     }
 
     // Prepare server address
@@ -1256,7 +1370,8 @@ int Connect(int s, struct timeval tv, struct data* pb) {
     // Bind socket
     if (inet_pton(AF_INET, bindaddr, &bind_addr.sin_addr) > 0) {
         if (bind(s, (struct sockaddr*)&bind_addr, sizeof(bind_addr)) < 0) {
-            if (res) freeaddrinfo(res); // Ensure res is valid before freeing
+            if (res) freeaddrinfo(res);
+            printf("Binding failed.");
             return -2;  // Binding failed
         }
     }
@@ -1272,9 +1387,15 @@ int Connect(int s, struct timeval tv, struct data* pb) {
     FD_SET(s, &fdr);
     FD_SET(s, &fdw);
 
-    if (select(s + 1, &fdr, &fdw, NULL, &tv) <= 0) {
+    int ret = select(s + 1, &fdr, &fdw, NULL, &tv);
+    if (ret == -1) {
+        //perror("select() failed");
         if (res) freeaddrinfo(res);
-        return -3;  // Timeout or error
+        return -1;  // Indicate error
+    } else if (ret == 0) {
+        //printf("Timeout occurred.");
+        if (res) freeaddrinfo(res);
+        return -3;  // Indicate timeout
     }
 
     // Check if connection was successful
@@ -1282,125 +1403,223 @@ int Connect(int s, struct timeval tv, struct data* pb) {
         getsockopt(s, SOL_SOCKET, SO_ERROR, &err, &errlen);
         if (err != 0) {
             if (res) freeaddrinfo(res);
+            //printf("Connection failed.");
             return -4;  // Connection failed
         }
     } else {
         if (res) freeaddrinfo(res);
+        //printf("Unexpected failure.");
         return -5;  // Unexpected failure
     }
 
-    // Free memory only once before returning successfully
     if (res) freeaddrinfo(res);
+    //printf("Connected.");
     return 0;  // Successfully connected
 }
 
 void* thread_conn(void* arg) {
-    struct data* pb=(struct data *)arg;
+    int s;
+    struct data* pb = (struct data*)arg;
     struct timeval tv = { .tv_sec = 0 };
 
     startTime = time(NULL);
     pb->delay2 = (scatter > 0) ? (rand() % scatter + delay) : delay;
     tv.tv_usec = pb->delay2 * 1000;
 
-    int s = try_connect(pb, tv);
-    if (s == -1) pthread_exit(NULL);
+    //printf("Thread attempting to connect as %s\n", pb->username);
+    while (!atomic_load(&pb->connected)) {
+        s = socket(AF_INET, SOCK_STREAM, 0);
+        if (Connect(s, tv, pb) == 0) {
+            break;
+        }
+    }
 
     // Ensure only one thread establishes the connection
-    if (!atomic_compare_exchange_strong(&pb->connected, &(int){0}, 1)) {
+    if (!atomic_compare_exchange_strong(&pb->connected, &(bool){false}, true)) {
+        //printf("Wasn't firt thread. Closing socket.\n");
         close(s);
         pthread_exit(NULL);
     }
 
     // First successful thread does the work
+    //printf("Sending logon packet: %s\n", pb->logonPacket);
     Send(s, pb->logonPacket, sizeof(pb->logonPacket), 0);
     pb->conTime = time(NULL) - startTime;
     
     message_loop(s, pb);
     
-    // Cleanup after disconnection
-    close(s);
-    atomic_store(&pb->connected, 0);
+    // Cleanup and discont if not already disconnected by remote command.
+    if (s != -1) {
+        close(s);
+    }
+
+    //printf("%s disconnected.\n", pb->username);
+    atomic_store(&pb->connected, false);
     pthread_exit(NULL);
 }
 
+void reinitialize_bot(struct data* pb) {
+    // Reset connection state and timing information
+    pb->flood = 0;
+    pb->conTime = 0;
+    pb->lockdown = 0;
+    pb->op = 0;
+    pb->des = 0;
+    pb->tban = 0;
+    pb->chanham = 0;
+    pb->hasop = 0;
+    recon = 0;
+    memset(pb->logonPacket, '\0', sizeof(pb->logonPacket));
+    memset(pb->currChan, '\0', sizeof(pb->currChan));
+    memset(pb->username, '\0', sizeof(pb->username));
+    memset(pb->password, '\0', sizeof(pb->password));
+    memset(pb->channel, '\0', sizeof(pb->channel));
+    memset(pb->server, '\0', sizeof(pb->server));
+    memset(pb->trigger, '\0', sizeof(pb->trigger));
+}
+
 char *replace_str(char *str, char *orig, int rep) {
-  static char buffer[MAX_CFG_LEN - 1];
-  char *p;
-  if(!(p = strstr(str, orig)))
-    return str;
-  strncpy(buffer, str, p-str);
-  buffer[p-str] = '\0';
-  sprintf(buffer+(p-str), "%d%s", rep, p+strlen(orig));
-  return buffer;
+    char *p = strstr(str, orig);
+    if (!p) return strdup(str);
+
+    int len = snprintf(NULL, 0, "%.*s%d%s", (int)(p - str), str, rep, p + strlen(orig));
+    char *buffer = malloc(len + 1);
+    if (!buffer) return NULL;
+
+    snprintf(buffer, len + 1, "%.*s%d%s", (int)(p - str), str, rep, p + strlen(orig));
+    return buffer;
 }
 
 void create_threads(struct data* pb) {
     int err;
     int i = 0;
     int numThreads = numBots * threads;
-    pthread_t thread[numThreads];
-    //Create and configure each bot.
-    for (int t = 0; t < numBots; t++, pb++) {
-        char *replaced = replace_str(username, (char*)"#", t);
-        char locName[MAX_CFG_LEN -1] = { 0 };
-        memcpy(locName, replaced, strlen(replaced));
-        //char *thisBotsName = strdup(replace_str(username, (char*)"#", t));
-        //There's no need to do this more than once.
-        if (strcmp(pb->username, locName) != 0) {
-            strcpy(pb->username, locName);
-            strcpy(pb->password, password);
-            strcpy(pb->channel, channel);
-            strcpy(pb->server, server);
-            strcpy(pb->trigger, trigger);
+    pthread_t *thread = malloc(sizeof(pthread_t) * numThreads);
+    if (!thread) {
+        perror("Thread allocation failed");
+        clean_exit(EXIT_FAILURE);
+    }
+
+    //printf("Creating %d bots...\n", numBots);
+
+    // Create and configure each bot using indexed access
+    for (int t = 0; t < numBots; t++) {
+        char *replaced = replace_str(username, "#", t);
+        char locName[MAX_CFG_LEN] = { 0 };  // Ensure safe buffer size
+        
+        if (replaced) {
+            strncpy(locName, replaced, sizeof(locName) - 1);
+            locName[sizeof(locName) - 1] = '\0';  // Ensure null termination
+            free(replaced);  // Ensure no memory leaks
+        } else {
+            printf("Failed to replace username. Need # in username in config.json");
+            strncpy(locName, username, sizeof(locName) - 1);
+            locName[sizeof(locName) - 1] = '\0';  // Ensure null termination
+            numBots = 1;  // Ensure only one bot is created
         }
-        pb->botNum = t;
-        pb->port = port;
-        pb->threads = threads;
-        memset(pb->logonPacket, '\0', sizeof(pb->logonPacket));
-        sprintf(pb->logonPacket, "C1\r\nACCT %s\r\nPASS %s\r\nHOME %s\r\nLOGIN\r\n", pb->username, pb->password, pb->channel);
-        //Create threads for each bot.
+        // Ensure pb[t].username has valid allocated memory before writing
+        if (pb[t].username) {
+            snprintf(pb[t].username, sizeof(pb[t].username), "%s", locName);
+            pb[t].username[sizeof(pb[t].username) - 1] = '\0';
+        }
+        
+        // Repeat for other fields
+        if (pb[t].password) {
+            snprintf(pb[t].password, sizeof(pb[t].password), "%s", password);
+            pb[t].password[sizeof(pb[t].password) - 1] = '\0';
+        }
+        
+        if (pb[t].channel) {
+            snprintf(pb[t].channel, sizeof(pb[t].channel), "%s", channel);
+            pb[t].channel[sizeof(pb[t].channel) - 1] = '\0';
+        }
+        
+        if (pb[t].server) {
+            snprintf(pb[t].server, sizeof(pb[t].server), "%s", server);
+            pb[t].server[sizeof(pb[t].server) - 1] = '\0';
+        }
+        
+        if (pb[t].trigger) {
+            snprintf(pb[t].trigger, sizeof(pb[t].trigger), "%s", trigger);
+            pb[t].trigger[sizeof(pb[t].trigger) - 1] = '\0';
+        }        
+
+        pb[t].botNum = t;
+        pb[t].port = port;
+        pb[t].threads = threads;
+
+        memset(pb[t].logonPacket, '\0', sizeof(pb[t].logonPacket));
+        snprintf(pb[t].logonPacket, sizeof(pb[t].logonPacket),
+            "C1\r\nACCT %s\r\nPASS %s\r\nHOME %s\r\nLOGIN\r\n",
+            pb[t].username, pb[t].password, pb[t].channel);
+    
+        pb[t].logonPacket[sizeof(pb[t].logonPacket) - 1] = '\0';
+
+        //printf("Bot %d\n%s\n", t, pb[t].logonPacket);
+        // Create threads for each bot
         for (int z = 0; z < threads; z++, i++) {
-            err = pthread_create(&thread[i], NULL, thread_conn, pb);
-            if (err < 0)
-                perror("pthread_create");
+            if (pthread_create(&thread[i], NULL, thread_conn, &pb[t]) != 0) {
+                perror("Failed to create thread");
+            }
         }
     }
-    //Join threads if they haven't already kilt themselves.
-    for (int t = 0; t < numThreads; t++) {
-        err = pthread_join(thread[t], NULL);
-        if (err < 0)
-            perror("pthread_exit");
+    //printf(" %d threads created.\n", i);
+
+    // Join threads, we compare to i because it's the total number of threads
+    for (int z = 0; z < i; z++) {
+        err = pthread_join(thread[z], NULL);
+        if (err != 0) {
+            perror("pthread_join failed");
+        }
     }
+
+    free(thread);
 }
 
 int main() {
     srand((unsigned)time(NULL));
-    setup_signal_handlers();
-    printf("Bot Version: 3.666\n");
+
+    printf("%s\n" , FUK_VERSION);
+    // Fork the process to run in the background.
     printf("PID: %d\n", getpid() + 1);
     if ((main_pid = fork()) == -1) {
         printf("shutting down: unable to fork\n");
         exit(1);
         return 1;
     }
+    // If the PID is not 0, then we are the parent process.
     if (main_pid != 0) {
         return 0;
     }
+
+    // Read configuration from file.
     if (read_config() != 0) {
         perror("Read config error.");
-        return EXIT_FAILURE;
+        clean_exit(EXIT_FAILURE);
     }
-    pb = (struct data*)calloc(numBots, sizeof(struct data));
-        if (!pb) {
+
+    // Allocate the bot array AFTER numBots is set by read_config().
+    pb = calloc(numBots, sizeof(struct data));
+    if (!pb) {
         perror("Memory allocation failed for pb");
-        return EXIT_FAILURE;
+        clean_exit(EXIT_FAILURE);
     }
-    allocate_lists();
-    while (1) {
+
+    // Main loop: run indefinitely until the process is killed remotely.
+    while (shutDown != 1) {
+        // Reinitialize each bot's data before starting threads.
+        for (int i = 0; i < numBots; i++) {
+            reinitialize_bot(&pb[i]);
+        }
         startTime = time(NULL);
+
+        // Create threads that perform bot tasks.
         create_threads(pb);
+
+        // Sleep for a specified connection wait time.
         msleep(conWait * 1000);
     }
+
+    // Cleanup and exit
     clean_exit(EXIT_SUCCESS);
-    return EXIT_SUCCESS;
 }
