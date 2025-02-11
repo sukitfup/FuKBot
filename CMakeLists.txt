@@ -8,16 +8,20 @@ set(CMAKE_C_STANDARD_REQUIRED True)
 # Enable warnings
 add_compile_options(-Wall -Wextra)
 
-if(WIN32)
-    add_executable(FuKBoT fuk3.cpp)
-else()
-    add_executable(FuKBoT fuk3.c)
-endif()
-
 # Find cJSON library
 find_library(CJSON_LIB NAMES cjson libcjson PATHS /usr/lib /usr/local/lib /lib/x86_64-linux-gnu)
 find_path(CJSON_INCLUDE_DIR cjson/cJSON.h PATHS /usr/include /usr/local/include)
 
+# Ensure we only add the executable once
+if(NOT TARGET FuKBoT)
+    if(WIN32)
+        add_executable(FuKBoT fuk3.cpp)
+    else()
+        add_executable(FuKBoT fuk3.c)
+    endif()
+endif()
+
+# Add include and link directories
 if(CJSON_LIB AND CJSON_INCLUDE_DIR)
     message(STATUS "Found cJSON: ${CJSON_LIB}")
     target_include_directories(FuKBoT PRIVATE ${CJSON_INCLUDE_DIR})
@@ -25,9 +29,6 @@ if(CJSON_LIB AND CJSON_INCLUDE_DIR)
 else()
     message(FATAL_ERROR "cJSON library not found. Please install libcjson-dev.")
 endif()
-
-# Add source file and executable
-add_executable(FuKBoT fuk3.c)
 
 # Link pthread (only for Linux)
 if(NOT WIN32)
