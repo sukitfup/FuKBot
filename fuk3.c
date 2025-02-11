@@ -1345,87 +1345,117 @@ int read_config() {
 
 // This function ensures that if the cached DNS results are
 // older than DNS_CACHE_TTL seconds, we refresh them.
-struct addrinfo* get_cached_dns(const char *portStr) {
+int get_cached_dns(const char *portStr) {
     time_t now = time(NULL);
 
     pthread_mutex_lock(&g_dns_mutex);
 
-    // If no cache or it's older than 5 seconds, do a fresh lookup
-    if (!g_cached_dns || (now - g_last_dns_update) > DNS_CACHE_TTL) {
-        // If we already had a cached list, free it
-        if (g_cached_dns) {
-            freeaddrinfo(g_cached_dns);
-            g_cached_dns = NULL;
+    if (!atomic_load(&g_cached_dns) || (now - g_last_dns_update) > DNS_CACHE_TTL) {
+        // If we already had a cached list, free it.
+        struct addrinfo *old_dns = atomic_load(&g_cached_dns);
+        if (old_dns) {
+            freeaddrinfo(old_dns);
+            atomic_store(&g_cached_dns, NULL);
         }
 
         struct addrinfo hints;
         memset(&hints, 0, sizeof(hints));
-        hints.ai_family   = AF_INET;   // or AF_INET if you only want IPv4
+        hints.ai_family   = AF_INET;
         hints.ai_socktype = SOCK_STREAM;
 
-        int ret = getaddrinfo(pb->server, portStr, &hints, &g_cached_dns);
+        // Use a temporary pointer for getaddrinfo.
+        struct addrinfo *temp = NULL;
+        int ret = getaddrinfo(server, portStr, &hints, &temp);
         if (ret != 0) {
             fprintf(stderr, "getaddrinfo failed: %s\n", gai_strerror(ret));
-            g_cached_dns = NULL;  // ensure it's not left half‐initialized
+            atomic_store(&g_cached_dns, NULL);
+            pthread_mutex_unlock(&g_dns_mutex);
+            return -1;
         } else {
-            // Successfully refreshed
+            atomic_store(&g_cached_dns, temp);
             g_last_dns_update = now;
         }
     }
-
-    // You might want to *return a copy* if you need full control
-    // outside the lock. But in many cases, returning the pointer
-    // is enough, as long as you keep the lock for usage or only
-    // read it quickly.
-    struct addrinfo* result = g_cached_dns;
     pthread_mutex_unlock(&g_dns_mutex);
-
-    return result;
+    return 0;
 }
 
-/**
- * connect_nonblock()
- *   - Sets the socket to O_NONBLOCK.
- *   - Calls connect().
- *   - If connect() returns EINPROGRESS, uses select() with the given `tv`
- *     to wait for the socket to become writable.
- *   - Returns 0 on success, -1 on failure.
- */
-static int connect_nonblock(int s,
-                            const struct sockaddr* addr,
-                            socklen_t addrlen,
-                            struct timeval tv)
+static struct addrinfo* copy_addrinfo_if_valid(struct addrinfo* src) {
+    if (!src) return NULL;
+
+    struct addrinfo* dst = malloc(sizeof(struct addrinfo));
+    if (!dst) return NULL; // Handle allocation failure
+
+    memcpy(dst, src, sizeof(struct addrinfo));
+
+    // Copy underlying socket address
+    if (src->ai_addr && src->ai_addrlen > 0) {
+        dst->ai_addr = malloc(src->ai_addrlen);
+        if (!dst->ai_addr) {
+            free(dst);
+            return NULL;
+        }
+        memcpy(dst->ai_addr, src->ai_addr, src->ai_addrlen);
+    }
+
+    // Copy canonical name if present
+    if (src->ai_canonname) {
+        dst->ai_canonname = strdup(src->ai_canonname);
+    }
+
+    return dst;
+}
+
+static int connect_nonblock(int s, struct timeval tv)
 {
     set_nonblock(s);
 
-    if (connect(s, addr, addrlen) == 0) {
-        // Connected immediately (rare but possible)
-        return 0;
+    // **Atomic Read Without Mutex**
+    struct addrinfo *local_dns = atomic_load(&g_cached_dns);
+
+    // **Only Deep Copy If Valid**
+    if (!local_dns) {
+        return -1; // No valid DNS entry
+    }
+
+    // Optional: Deep copy only if needed to avoid stale reads
+    struct addrinfo* safe_dns = copy_addrinfo_if_valid(local_dns);
+    if (!safe_dns) {
+        return -1; // Memory allocation failed
+    }
+
+    // Try to connect
+    int ret = connect(s, safe_dns->ai_addr, safe_dns->ai_addrlen);
+    if (ret == 0) {
+        freeaddrinfo(safe_dns);
+        return 0; // Connected immediately
     }
     if (errno != EINPROGRESS) {
-        // Some other error
+        freeaddrinfo(safe_dns);
         return -1;
     }
 
-    // Wait for writeability
+    // Wait for writability
     fd_set wfds;
     FD_ZERO(&wfds);
     FD_SET(s, &wfds);
 
-    int ret = select(s + 1, NULL, &wfds, NULL, &tv);
+    ret = select(s + 1, NULL, &wfds, NULL, &tv);
     if (ret <= 0) { 
-        // 0 => timeout, -1 => error
-        return -1;
+        freeaddrinfo(safe_dns);
+        return -1;  // 0 => timeout, -1 => error
     }
     if (!FD_ISSET(s, &wfds)) {
-        // Not writable for some reason
-        return -1;
+        freeaddrinfo(safe_dns);
+        return -1;  // Not writable for some reason
     }
 
     // Double-check for connect() success
     int so_error = 0;
     socklen_t len = sizeof(so_error);
     getsockopt(s, SOL_SOCKET, SO_ERROR, &so_error, &len);
+    freeaddrinfo(safe_dns);
+
     if (so_error != 0) {
         errno = so_error;
         return -1;
@@ -1446,19 +1476,9 @@ int Connect(int s, struct timeval tv, struct data* pb) {
     char portStr[16];
     snprintf(portStr, sizeof(portStr), "%d", pb->port);
 
-    // Obtain cached DNS results
-    struct addrinfo* ai = get_cached_dns(portStr);
-    if (!ai) {
-        return -1; // no addresses
-    }
-
-    // We'll just take the FIRST address from the list:
-    // If you want to attempt multiple, you'd need multiple attempts,
-    // but then you'd also need multiple sockets, because once you've
-    // called connect() on 's', you can't just reconnect it to a different address.
-    struct addrinfo* p = ai; 
-    if (!p) {
-        return -1; 
+    // Obtain cached DNS results.
+    if (get_cached_dns(portStr) != 0) {
+        return -1; // DNS lookup failed
     }
 
     // BIND to your local IP if desired
@@ -1476,10 +1496,11 @@ int Connect(int s, struct timeval tv, struct data* pb) {
     }
 
     // Nonblocking connect on the one address
-    if (connect_nonblock(s, p->ai_addr, p->ai_addrlen, tv) == 0) {
+    if (connect_nonblock(s, tv) == 0) {
         // success
         return 0;
     }
+
     // else fail
     return -1;
 }
@@ -1496,6 +1517,8 @@ void* thread_conn(void* arg) {
 
     //printf("Thread attempting to connect as %s\n", pb->username);
     while (!atomic_load(&pb->connected)) {
+        pb->delay2 = (scatter > 0) ? (rand() % scatter + delay) : delay;
+        tv.tv_usec = pb->delay2 * 1000;
         s = socket(AF_INET, SOCK_STREAM, 0);
         if (Connect(s, tv, pb) == 0) {
             break;
