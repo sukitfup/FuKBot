@@ -1,0 +1,21 @@
+{
+	"username":	"|2eV.TestesS#",
+	"password":	"123234",
+	"home":	"testes",
+	"server":	"war.pianka.io",
+	"port":	6112,
+	"bind":	"*",
+	"trigger":	"t",
+	"threads":	2,
+	"delay":	200,
+	"scatter":	200,
+	"conwait":	5,
+	"banwait":	1,
+	"numbots":	8,
+	"backupchan":	"poop",
+	"topic":	"poop",
+	"master":	["|2eV.FuKiSuK", "|2eV.Omen", "|2eV.P$Y"],
+	"safe":	["|2eV", "FuK", "Omen", "P$Y"],
+	"des":	["|2eV.TestesK0", "|2eV.TestesA0"],
+	"shit":	[]
+}
