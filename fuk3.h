@@ -100,7 +100,7 @@
 	char* mystrsep(char** stringp, const char* delim);
 	#define strsep mystrsep
 #else
-
+#include "cJSON.h"
 #include <stdatomic.h>
 #include <stdio.h>
 #include <sys/socket.h>
@@ -117,13 +117,14 @@
 #include <stdarg.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <stdbool.h>
 #endif
 
 #define BUILD_DATE	" (Built " __DATE__ " " __TIME__ ")"
 /*
 	Set your version text here
 */
-#define VERSION_TEXT "FuKeRy | v3.0"
+#define VERSION_TEXT "FuKeRy | v3.666"
 
 #if defined(WINDOWS_CPP_BUILD)
 	#define FUK_VERSION (VERSION_TEXT WIN_BUILD BUILD_DATE)
@@ -266,10 +267,9 @@
 	#define FUK_CFG_MAXCOUNT	1024
 	#define FUK_CFG_READBINARY	"rb"
 	#define FUK_CFG_WRITE		"w+"
-	#define FUK_CFG				"fuk.cfg"
+	#define FUK_CFG				"config.json"
 	#define FUK_CFG_ERROR		"Can't find %s!\n" /* if you ever deside to change the FUK_CFG file */
 	#define FUK_CFG_ERROR_O		"Can't open %s!\n" /* if you ever deside to change the FUK_CFG file */
-
 	#define FUK_CFG_PRINTFS		"%s=%s\n"
 	#define FUK_CFG_PRINTFI		"%s=%d\n"
 
@@ -314,6 +314,7 @@
 #define MAX_CFG_LEN 32
 #define MAX_LIST_LEN 32
 #define SEND_BUFFER_SIZE 256
+#define EVENT_TEXT_SIZE 256
 
 typedef struct {
     char id[MAX_LIST_LEN];
@@ -337,7 +338,7 @@ safeList* safe;
 shitList* shit;
 desList* des;
 
-int main_pid, masterSz, safeSz, shitSz, desSz, threadSz;
+int main_pid, masterSz, safeSz, shitSz, desSz, threadSz, shutDown, recon;
 int port, threads, delay, scatter, numBots, banWait, conWait, randGreet, startTime;
 
 // Declare global variables using the same length constraints
@@ -356,7 +357,7 @@ struct data {
     unsigned int flood;
     int conTime, tban, op, des, greet, botNum;
     int port, place, threads, delay2, hasop, lockdown, chanham;
-    volatile int connected;
+    atomic_bool connected;
     
     char password[MAX_CFG_LEN];
     char username[MAX_CFG_LEN];
@@ -367,7 +368,7 @@ struct data {
     char logonPacket[MAX_LOGON_PACKET_LEN];
     char currChan[MAX_CFG_LEN];
 };
-struct data *pb;
+extern struct data *pb;
 struct rusage r_usage;  // Keep this unchanged
 
 #if !defined(WINDOWS_CPP_BUILD)
@@ -418,7 +419,6 @@ void free_lists();
 void clean_exit(int status);
 void setup_signal_handlers();
 void processList(int s, char* com, char* name, char* list, void **pArray, int *pSize, const char* type);
-int try_connect(struct data* pb, struct timeval tv);
 CommandID resolve_command(const char* com);
 #endif
 void cfgStuff(int s, char* com, char* text);
