@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
 project(FuKBoT)
 
+# Set the C standard
+set(CMAKE_C_STANDARD 17)
+set(CMAKE_C_STANDARD_REQUIRED True)
+
 # Enable warnings
 add_compile_options(-Wall -Wextra)
 
@@ -15,13 +19,6 @@ if(CJSON_LIB AND CJSON_INCLUDE_DIR)
 else()
     message(FATAL_ERROR "cJSON library not found. Please install libcjson-dev.")
 endif()
-
-# Specify output directories
-set_target_properties(FuKBoT PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
-)
 
 # Add source file and executable
 add_executable(FuKBoT fuk3.c)
