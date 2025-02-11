@@ -100,7 +100,7 @@
 	char* mystrsep(char** stringp, const char* delim);
 	#define strsep mystrsep
 #else
-#include "cjson/cJSON.h"
+#include <cjson/cJSON.h>
 #include <stdatomic.h>
 #include <stdio.h>
 #include <sys/socket.h>
