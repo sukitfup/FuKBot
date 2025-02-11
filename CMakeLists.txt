@@ -22,7 +22,7 @@ set_target_properties(FuKBoT PROPERTIES
 
 if(WIN32)
     find_package(Threads REQUIRED)
-    target_link_libraries(FuKBoT PRIVATE ws2_32 Threads::Threads)
+    target_link_libraries(FuKBoT PRIVATE ws2_32 Threads::Threads cJSON::cJSON)
 else()
-    target_link_libraries(FuKBoT PRIVATE pthread)
+    target_link_libraries(FuKBoT PRIVATE pthread cJSON)
 endif()
