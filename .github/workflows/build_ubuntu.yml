@@ -16,7 +16,7 @@ jobs:
           dpkg -L libcjson-dev | grep cJSON.h || (echo "cJSON header not found!" && exit 1)
   
       - name: Create build directory
-        run: New-Item -Path build -ItemType Directory -Force
+        run: mkdir build
   
       - name: Configure CMake
         run: cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=.\vcpkg\scripts\buildsystems\vcpkg.cmake
