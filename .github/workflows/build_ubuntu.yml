@@ -14,13 +14,13 @@ jobs:
         run: |
           sudo apt update && sudo apt install -y cmake gcc libcjson-dev
           dpkg -L libcjson-dev | grep cJSON.h || (echo "cJSON header not found!" && exit 1)
-  
+
       - name: Create build directory
         run: mkdir build
-  
+
       - name: Configure CMake
-        run: cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=.\vcpkg\scripts\buildsystems\vcpkg.cmake
-  
+        run: cmake -S . -B build
+
       - name: Build
         run: cmake --build build --config Release
 
