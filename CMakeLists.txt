@@ -10,7 +10,7 @@ add_compile_options(-Wall -Wextra)
 
 # Find cJSON library
 find_library(CJSON_LIB NAMES cjson libcjson PATHS /usr/lib /usr/local/lib /lib/x86_64-linux-gnu)
-find_path(CJSON_INCLUDE_DIR cjson/cJSON.h PATHS /usr/include /usr/local/include)
+find_path(CJSON_INCLUDE_DIR cjson.h PATHS /usr/include /usr/local/include /lib/x86_64-linux-gnu/include)
 
 # Ensure we only add the executable once
 if(NOT TARGET FuKBoT)
@@ -21,7 +21,7 @@ if(NOT TARGET FuKBoT)
     endif()
 endif()
 
-# Add include and link directories
+# Include cJSON headers properly
 if(CJSON_LIB AND CJSON_INCLUDE_DIR)
     message(STATUS "Found cJSON: ${CJSON_LIB}")
     target_include_directories(FuKBoT PRIVATE ${CJSON_INCLUDE_DIR})
