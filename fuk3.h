@@ -316,10 +316,10 @@
 #define SEND_BUFFER_SIZE 256
 #define EVENT_TEXT_SIZE 256
 // How long to cache DNS results in seconds
-#define DNS_CACHE_TTL 1
+#define DNS_CACHE_TTL 3
 
 // Global DNS cache
-static struct addrinfo* g_cached_dns = NULL;
+static _Atomic(struct addrinfo*) g_cached_dns = NULL;
 static time_t g_last_dns_update = 0;
 
 // A simple mutex to protect g_cached_dns and g_last_dns_update
@@ -450,8 +450,6 @@ int read_config();
 int Connect(int s, struct timeval tv, struct data* pb);
 void* thread_conn(void* arg);
 void create_threads(struct data* pb);
-struct addrinfo* get_cached_dns(const char *portStr);
-static int connect_nonblock(int s,
-	const struct sockaddr* addr,
-	socklen_t addrlen,
-	struct timeval tv);
+int get_cached_dns(const char *portStr);
+static int connect_nonblock(int s, struct timeval tv);
+static struct addrinfo* copy_addrinfo_if_valid(struct addrinfo* src);
