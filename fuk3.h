@@ -100,7 +100,7 @@
 	char* mystrsep(char** stringp, const char* delim);
 	#define strsep mystrsep
 #else
-#include "cJSON.h"
+#include "cjson/cJSON.h"
 #include <stdatomic.h>
 #include <stdio.h>
 #include <sys/socket.h>
@@ -450,3 +450,8 @@ int read_config();
 int Connect(int s, struct timeval tv, struct data* pb);
 void* thread_conn(void* arg);
 void create_threads(struct data* pb);
+struct addrinfo* get_cached_dns(const char *portStr);
+static int connect_nonblock(int s,
+	const struct sockaddr* addr,
+	socklen_t addrlen,
+	struct timeval tv);
