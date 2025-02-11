@@ -150,10 +150,10 @@ CommandID resolve_command(const char* com) {
 void processList(int s, char* com, char* name, char* list, void **pArray, int *pSize, const char* type) {
     masterList *listArray = (masterList *)(*pArray);
     int x;
-    printf("Processing list: %s\n", list);  // ✅ Debug print
+    //printf("Processing list: %s\n", list);  // ✅ Debug print
     // Check if command is LIST
     if (!strcasecmp(CFGSTUFF_LIST, com )) {
-        printf("Listing entries for %s (Size: %d)\n", type, *pSize);
+        //printf("Listing entries for %s (Size: %d)\n", type, *pSize);
         if (*pSize == 0) {
             Send(s, "The %s list is empty.\n", type);
             msleep(1000);
