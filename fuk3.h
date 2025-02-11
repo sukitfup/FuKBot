@@ -100,7 +100,7 @@
 	char* mystrsep(char** stringp, const char* delim);
 	#define strsep mystrsep
 #else
-#include <cjson/cJSON.h>
+#include "cJSON.h"
 #include <stdatomic.h>
 #include <stdio.h>
 #include <sys/socket.h>
@@ -315,6 +315,15 @@
 #define MAX_LIST_LEN 32
 #define SEND_BUFFER_SIZE 256
 #define EVENT_TEXT_SIZE 256
+// How long to cache DNS results in seconds
+#define DNS_CACHE_TTL 1
+
+// Global DNS cache
+static struct addrinfo* g_cached_dns = NULL;
+static time_t g_last_dns_update = 0;
+
+// A simple mutex to protect g_cached_dns and g_last_dns_update
+static pthread_mutex_t g_dns_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct {
     char id[MAX_LIST_LEN];
@@ -418,7 +427,7 @@ void allocate_lists();
 void free_lists();
 void clean_exit(int status);
 void setup_signal_handlers();
-void processList(int s, char* com, char* name, char* list, void **pArray, int *pSize, const char* type);
+void processList(int s, char* com, char* name, void **pArray, int *pSize, const char* type);
 CommandID resolve_command(const char* com);
 #endif
 void cfgStuff(int s, char* com, char* text);
