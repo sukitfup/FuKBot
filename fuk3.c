@@ -92,8 +92,6 @@ void allocate_lists() {
     } else {
         des = NULL;
     }
-
-    //printf("Allocated lists: masterSz=%d, safeSz=%d, shitSz=%d, desSz=%d\n", masterSz, safeSz, shitSz, desSz);
 }
 
 void free_lists() {
@@ -150,17 +148,14 @@ CommandID resolve_command(const char* com) {
 void processList(int s, char* com, char* name, void **pArray, int *pSize, const char* type) {
     masterList *listArray = (masterList *)(*pArray);
     int x;
-    //printf("Processing list: %s\n", list);  // ✅ Debug print
     // Check if command is LIST
     if (!strcasecmp(CFGSTUFF_LIST, com )) {
-        //printf("Listing entries for %s (Size: %d)\n", type, *pSize);
         if (*pSize == 0) {
             Send(s, "The %s list is empty.\n", type);
             msleep(1000);
             return;
         }
         for (x = 0; x < *pSize; x++) {
-            //printf("Listing: %s\n", listArray[x].id);  // ✅ Debug print
             Send(s, "%s\n", listArray[x].id);
             msleep(1000);
         }
@@ -236,9 +231,8 @@ void cfgStuff(int s, char* com, char* text) {
     if (!list) return;
     char* name = strtok_r(NULL, " ", &pos);
     if (!name) {
-        name = "";  // ✅ Ensures name is always a valid pointer
+        name = "";  // Ensures name is always a valid pointer
     }
-    //printf("Processing cfgStuff: list=%s, name=%s\n", list, name);  // ✅ Debug print
     if (strstr(list, CFGSTUFF_MASTER)) {
         processList(s, com, name, (void**)&master, &masterSz, CFGSTUFF_MASTER);
     }
@@ -254,12 +248,17 @@ void cfgStuff(int s, char* com, char* text) {
 }
 
 void OnJoin(int s, struct data* pb, char* szSpeaker) {
-    if (pb->hasop == 1 && time(NULL) - pb->lastTime < 5)
-        pb->flood++;
-    else
-        pb->flood = 0;
-    pb->lastTime = time(NULL);
-    if (pb->hasop == 1 && pb->flood < 500) {
+    // Anti zerg flood stuff...
+    if (pb->hasop == 1) {
+        if (pb->flood > 1000) {
+            return;
+        }
+        if (time(NULL) - pb->lastTime < 5) {
+            pb->flood++;
+        } else {
+            pb->flood = 0;
+        }
+        // Process lists after we survive the flood.
         for (int d = 0; d < desSz; d++) {
             if (!strcasecmp(szSpeaker, des[d].id)) {
                 Send(s, SERVER_COMMAND_1, BASE_DESIGNATE, szSpeaker);
@@ -294,7 +293,7 @@ void OnJoin(int s, struct data* pb, char* szSpeaker) {
                 return;
             }
         }
-    } 
+    }
 }
 
 void OnUserFlags(int s, struct data* pb, char* szSpeaker, u_long uFlags) {
@@ -323,7 +322,6 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
 
     // Check if speaker is in master list
     for (i = 0; i < masterSz; i++) {
-        //printf("master[%d].id = %s\n", i, master[i].id);
         if (!strcasecmp(szSpeaker, master[i].id)) {
             doStuff = 1;
             break;
@@ -332,7 +330,6 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
 
     // If speaker not recognized, return
     if (!doStuff) return;
-    //printf("is in master list\n");
     // Check if the message starts with the bot's trigger or a '?' 
     if (szEventText[0] == pb->trigger[0] || szEventText[0] == '?') {
         // Create a buffer for the command string (everything after the first character)
@@ -348,16 +345,12 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
 
         // Resolve the command to an enum
         CommandID cmd = resolve_command(com);
-
-        // Print the command ID for verification
-        //printf("Resolved command ID: %d\n", cmd);
         
         // Switch on the enum for clearer code
         switch (cmd)
         {
             case CMD_CFGSTUFF_LIST:
                 if (ptrDat != NULL && pb->botNum == 0) {
-                    //printf("Calling cfgStuff for list\n");
                     cfgStuff(s, com, ptrDat);
                 }
                 break;
@@ -365,7 +358,6 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
             case CMD_CFGSTUFF_ADD:
             {
                 if (ptrDat != NULL && pb->botNum == 0) {
-                    //printf("Calling cfgStuff for add\n");
                     cfgStuff(s,com, ptrDat);
                     save_cfg();
                 }
@@ -375,7 +367,6 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
             case CMD_CFGSTUFF_REM:
             {
                 if (ptrDat != NULL && pb->botNum == 0) {
-                    //printf("Calling cfgStuff for remove\n");
                     cfgStuff(s, com, ptrDat);
                     save_cfg();
                 }
@@ -509,6 +500,7 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                         msleep(1000);
                     } else {
                         threads = atoi(ptrDat);
+                        pb->threads = threads;
                         save_cfg();
                         Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
                              BASE_THREADS, BASE_ISNOW, pb->threads);
@@ -942,6 +934,7 @@ void OnInfo(int s, struct data *pb, char *szEventText) {
         msleep(1000);
         return;
     }
+    // Simulates onjoin for the channel list in order to activate tag bans etc...
     else {
         char *pos, *user1, *user2;
         user1 = strtok_r(szEventTextCopy, ", ", &pos);
@@ -961,7 +954,7 @@ void OnInfo(int s, struct data *pb, char *szEventText) {
     }
 }
 
-void OnError(struct data *pb, char *szEventText) {
+void OnError(int s, struct data *pb, char *szEventText) {
     if (!pb || !szEventText) {
         return;  // Prevent NULL dereferences
     }
@@ -1004,74 +997,70 @@ void Dispatch(int s, struct data *pb, char *szEventText) {
     char *PING;
 
     eventType = strtok_r(szEventText, " ", &pos);
-    if (!eventType) return;  // Ensure we have an event type
-    if (!strcasecmp(eventType, "USER")) {
+    if(!strcasecmp(eventType, "USER")) {
         USER_CMD = strtok_r(NULL, " ", &pos);
-        //printf("USER CMD: %s\n", USER_CMD);
-        if (!USER_CMD) return;
-
-        if (!strcasecmp(USER_CMD, "IN") || !strcasecmp(USER_CMD, "UPDATE") || !strcasecmp(USER_CMD, "JOIN")) {
+        if(!strcasecmp(USER_CMD, "IN")) {
             USER_FLAGS = strtok_r(NULL, " ", &pos);
             USER_PING = strtok_r(NULL, " ", &pos);
             USER_NAME = strtok_r(NULL, " ", &pos);
-
-            if (!USER_FLAGS || !USER_PING || !USER_NAME) return;  // Validate required tokens
-
             OnUserFlags(s, pb, USER_NAME, atoi(USER_FLAGS));
             return;
-        } else if (!strcasecmp(USER_CMD, "EMOTE")) {
+        } else if(!strcasecmp(USER_CMD, "UPDATE")) {
+            USER_FLAGS = strtok_r(NULL, " ", &pos);
+            USER_PING = strtok_r(NULL, " ", &pos);
+            USER_NAME = strtok_r(NULL, " ", &pos);
+            OnUserFlags(s, pb, USER_NAME, atoi(USER_FLAGS));
+            return;
+        } else if(!strcasecmp(USER_CMD, "EMOTE")) {
             USER_NAME = strtok_r(NULL, " ", &pos);
             USER_MSG = strtok_r(NULL, " ", &pos);
-
-            if (!USER_NAME || !USER_MSG) return;
-
             OnTalk(s, pb, USER_NAME, USER_MSG);
             return;
-        } else if (!strcasecmp(USER_CMD, "WHISPER") || !strcasecmp(USER_CMD, "TALK")) {
+        } else if(!strcasecmp(USER_CMD, "JOIN")) {
+            USER_FLAGS = strtok_r(NULL, " ", &pos);
+            USER_PING = strtok_r(NULL, " ", &pos);
+            USER_NAME = strtok_r(NULL, " ", &pos);
+            OnJoin(s, pb, USER_NAME);
+            return;
+        } else if(!strcasecmp(USER_CMD, "WHISPER")) {
             USER_DIRECTION = strtok_r(NULL, " ", &pos);
             USER_NAME = strtok_r(NULL, " ", &pos);
             USER_MSG = strtok_r(NULL, "\r\n", &pos);
-
-            if (!USER_DIRECTION || !USER_NAME || !USER_MSG) return;
-
             OnTalk(s, pb, USER_NAME, USER_MSG);
             return;
-        }
-        return;
-    } else if (!strcasecmp(eventType, "CHANNEL")) {
+        } else if(!strcasecmp(USER_CMD, "TALK")) {
+            USER_DIRECTION = strtok_r(NULL, " ", &pos);
+            USER_NAME = strtok_r(NULL, " ", &pos);
+            USER_MSG = strtok_r(NULL, "\r\n", &pos);
+            OnTalk(s , pb, USER_NAME, USER_MSG);
+            return;
+        }else
+            return;
+    } else if(!strcasecmp(eventType, "CHANNEL")) {
         CHANNEL_CMD = strtok_r(NULL, " ", &pos);
-        if (!CHANNEL_CMD) return;
-
-        if (!strcasecmp(CHANNEL_CMD, "JOIN")) {
+        if(!strcasecmp(CHANNEL_CMD, "JOIN")) {
             CHANNEL_NAME = strtok_r(NULL, "\r\n", &pos);
-            if (!CHANNEL_NAME) return;
-
             OnChannel(s, pb, CHANNEL_NAME);
         }
         return;
-    } else if (!strcasecmp(eventType, "SERVER")) {
+    } else if(!strcasecmp(eventType, "SERVER")) {
         SERVER_CMD = strtok_r(NULL, " ", &pos);
-        if (!SERVER_CMD) return;
-
-        if (!strcasecmp(SERVER_CMD, "INFO") || !strcasecmp(SERVER_CMD, "ERROR")) {
+        if(!strcasecmp(SERVER_CMD, "INFO")) {
             SERVER_MSG = strtok_r(NULL, "\r\n", &pos);
-            if (!SERVER_MSG) return;
-
-            if (!strcasecmp(SERVER_CMD, "INFO")) {
-                OnInfo(s, pb, SERVER_MSG);
-            } else {
-                OnError(pb, SERVER_MSG);
-            }
+            OnInfo(s, pb, SERVER_MSG);
             return;
-        }
-        return;
-    } else if (!strcasecmp(eventType, "PING")) {
+        } else if(!strcasecmp(SERVER_CMD, "ERROR")) {
+            SERVER_MSG = strtok_r(NULL, "\r\n", &pos);
+            OnError(s, pb, SERVER_MSG);
+            return;
+        } else
+            return;
+    } else if(!strcasecmp(eventType, "PING")) {
         PING = strtok_r(NULL, " ", &pos);
-        if (!PING) return;
-
         OnPing(s, pb, PING);
         return;
-    }
+    } else
+        return;
 }
 
 void message_loop(int s, struct data* pb) {
@@ -1148,7 +1137,6 @@ void message_loop(int s, struct data* pb) {
         }
         msleep(500); // Small delay to prevent CPU overuse
     }
-    //printf(" %s Exiting message loop\n", pb->username);
 }
 
 int save_cfg() {
@@ -1212,7 +1200,6 @@ int save_cfg() {
     free(json_string);
     cJSON_Delete(json);
 
-    //printf("Config saved to config.json\n");
     return 0;
 }
 
@@ -1234,7 +1221,6 @@ int read_config() {
         perror("Error opening config.json\n");
         return -1;
     }
-    //printf("Reading config.json...\n");
 
     // Read file content
     fseek(cfg, 0, SEEK_END);
@@ -1257,7 +1243,6 @@ int read_config() {
         free(data);
         return -1;
     }
-    //printf("JSON has been parsed\n");
 
     // Copy individual values safely
     json_safe_copy(json, "username", username, sizeof(username));
@@ -1528,7 +1513,6 @@ void* thread_conn(void* arg) {
     pb->delay2 = (scatter > 0) ? (rand() % scatter + delay) : delay;
     tv.tv_usec = pb->delay2 * 1000;
 
-    //printf("Thread attempting to connect as %s\n", pb->username);
     while (!atomic_load(&pb->connected)) {
         pb->delay2 = (scatter > 0) ? (rand() % scatter + delay) : delay;
         tv.tv_usec = pb->delay2 * 1000;
@@ -1536,7 +1520,6 @@ void* thread_conn(void* arg) {
         if (Connect(s, tv, pb) == 0) {
             break;
         } else {
-            //printf("Connection failed. Retrying...\n");
             close(s);
         }   
     }
@@ -1544,13 +1527,11 @@ void* thread_conn(void* arg) {
     // Ensure only one thread establishes the connection
     bool expected = false;
     if (!atomic_compare_exchange_strong(&pb->connected, &expected, true)) {
-        //printf("Wasn't firt thread. Closing socket.\n");
         close(s);
         pthread_exit(NULL);
     }
 
     // First successful thread does the work
-    //printf("Sending logon packet: %s\n", pb->logonPacket);
     Send(s, pb->logonPacket, sizeof(pb->logonPacket), 0);
     pb->conTime = time(NULL) - startTime;
     
@@ -1561,7 +1542,6 @@ void* thread_conn(void* arg) {
         close(s);
     }
 
-    //printf("%s disconnected.\n", pb->username);
     atomic_store(&pb->connected, false);
     pthread_exit(NULL);
 }
@@ -1607,8 +1587,6 @@ void create_threads(struct data* pb) {
         perror("Thread allocation failed");
         clean_exit(EXIT_FAILURE);
     }
-
-    //printf("Creating %d bots...\n", numBots);
 
     // Create and configure each bot using indexed access
     for (int t = 0; t < numBots; t++) {
@@ -1663,7 +1641,6 @@ void create_threads(struct data* pb) {
     
         pb[t].logonPacket[sizeof(pb[t].logonPacket) - 1] = '\0';
 
-        //printf("Bot %d\n%s\n", t, pb[t].logonPacket);
         // Create threads for each bot
         for (int z = 0; z < threads; z++, i++) {
             if (pthread_create(&thread[i], NULL, thread_conn, &pb[t]) != 0) {
@@ -1671,7 +1648,6 @@ void create_threads(struct data* pb) {
             }
         }
     }
-    //printf(" %d threads created.\n", i);
 
     // Join threads, we compare to i because it's the total number of threads
     for (int z = 0; z < i; z++) {
