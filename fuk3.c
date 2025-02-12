@@ -26,7 +26,7 @@ char bindaddr[MAX_CFG_LEN];
 char channel[MAX_CFG_LEN];
 char trigger[MAX_CFG_LEN];
 char backup[MAX_CFG_LEN];
-char topic[MAX_CFG_LEN];
+char topic[MAX_TOPIC_LEN];
 char tag[MAX_CFG_LEN];
 
 void clean_exit(int status) {
@@ -1406,6 +1406,20 @@ static struct addrinfo* copy_addrinfo_if_valid(struct addrinfo* src) {
     return dst;
 }
 
+static void free_addrinfo_copy(struct addrinfo *info) {
+    if (!info) return;
+
+    // If we set ai_next = NULL, no chain to traverse
+    // so just free what we allocated in copy_addrinfo_if_valid().
+    if (info->ai_addr) {
+        free(info->ai_addr);
+    }
+    if (info->ai_canonname) {
+        free(info->ai_canonname);
+    }
+    free(info);
+}
+
 static int connect_nonblock(int s, struct timeval tv)
 {
     set_nonblock(s);
@@ -1418,20 +1432,19 @@ static int connect_nonblock(int s, struct timeval tv)
         return -1; // No valid DNS entry
     }
 
-    // Optional: Deep copy only if needed to avoid stale reads
-    struct addrinfo* safe_dns = copy_addrinfo_if_valid(local_dns);
+    // **Atomic Read Without Mutex**
+    struct addrinfo *safe_dns = copy_addrinfo_if_valid(local_dns);
     if (!safe_dns) {
-        return -1; // Memory allocation failed
+        return -1;
     }
 
-    // Try to connect
     int ret = connect(s, safe_dns->ai_addr, safe_dns->ai_addrlen);
     if (ret == 0) {
-        freeaddrinfo(safe_dns);
-        return 0; // Connected immediately
+        free_addrinfo_copy(safe_dns);
+        return 0;
     }
     if (errno != EINPROGRESS) {
-        freeaddrinfo(safe_dns);
+        free_addrinfo_copy(safe_dns);
         return -1;
     }
 
@@ -1442,11 +1455,11 @@ static int connect_nonblock(int s, struct timeval tv)
 
     ret = select(s + 1, NULL, &wfds, NULL, &tv);
     if (ret <= 0) { 
-        freeaddrinfo(safe_dns);
+        free_addrinfo_copy(safe_dns);
         return -1;  // 0 => timeout, -1 => error
     }
     if (!FD_ISSET(s, &wfds)) {
-        freeaddrinfo(safe_dns);
+        free_addrinfo_copy(safe_dns);
         return -1;  // Not writable for some reason
     }
 
@@ -1454,13 +1467,13 @@ static int connect_nonblock(int s, struct timeval tv)
     int so_error = 0;
     socklen_t len = sizeof(so_error);
     getsockopt(s, SOL_SOCKET, SO_ERROR, &so_error, &len);
-    freeaddrinfo(safe_dns);
 
     if (so_error != 0) {
         errno = so_error;
+        free_addrinfo_copy(safe_dns);
         return -1;
     }
-
+    free_addrinfo_copy(safe_dns);
     return 0; // success
 }
 
