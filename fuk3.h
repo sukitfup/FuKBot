@@ -437,7 +437,7 @@ void OnUserFlags(int s, struct data* pb, char* szSpeaker, u_long uFlags);
 void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText);
 void OnChannel(int s, struct data* pb, char* szEventText);
 void OnInfo(int s, struct data* pb, char* szEventText);
-void OnError(struct data* pb, char* szEventText);
+void OnError(int s, struct data* pb, char* szEventText);
 void OnPing(int s, struct data* pb, char* szEventText);
 void Dispatch(int s, struct data* pb, char* szEventText);
 int Send(int s, const char* lpszFmt, ...); /* match vars */
