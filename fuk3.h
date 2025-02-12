@@ -313,6 +313,7 @@
 #define MAX_LOGON_PACKET_LEN 128
 #define MAX_CFG_LEN 32
 #define MAX_LIST_LEN 32
+#define MAX_TOPIC_LEN 128
 #define SEND_BUFFER_SIZE 256
 #define EVENT_TEXT_SIZE 256
 // How long to cache DNS results in seconds
@@ -358,7 +359,7 @@ char bindaddr[MAX_CFG_LEN];
 char channel[MAX_CFG_LEN];
 char trigger[MAX_CFG_LEN];
 char backup[MAX_CFG_LEN];
-char topic[MAX_CFG_LEN];
+char topic[MAX_TOPIC_LEN];
 char tag[MAX_CFG_LEN];
 
 struct data {
