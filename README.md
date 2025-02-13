@@ -10,20 +10,20 @@ This document provides an overview of the available commands for the bot. The bo
 
 | Command | Description |
 |---------|-------------|
-| `list (master, des, safe, shit)` | Lists configuration details. |
-| `add (master, des, safe, shit)` | Adds an entry to a configuration list. |
-| `remove (master, des, safe, shit)` | Removes an entry from a configuration list. |
-| `trigger (set, show)` | Sets or displays the bot's command trigger. |
+| `list (master, des, safe, shit)` | Lists entries. |
+| `add (master, des, safe, shit)` | Adds an entry to a list. |
+| `remove (master, des, safe, shit)` | Removes an entry from a list. |
+| `trigger (set, show)` | Sets or displays the bot's trigger. |
 | `home (set, show)` | Sets or displays the bot's home channel. |
 | `topic (set, show)` | Sets or displays the channel topic. |
 | `backup (set, show)` | Sets or displays the backup channel. |
 | `server (show)` | Displays the current server. |
 | `threads (set, show)` | Sets or displays the number of threads. |
 | `port (set, show)` | Sets or displays the connection port. |
-| `delay (set, show)` | Sets or displays the delay for bot actions. |
-| `scatter (set, show)` | Sets or displays the scatter delay. |
-| `banwait (set, show)` | Sets or displays the ban wait time. |
-| `conwait (set, show)` | Sets or displays the connection wait time. |
+| `delay (set, show)` | Sets or displays the timeout for each connection attempt. |
+| `scatter (set, show)` | Scatter randomly adds 0-x to the delay. |
+| `banwait (set, show)` | Sets or displays the time the bot waits after each ban/kick. |
+| `conwait (set, show)` | Sets or displays the time that the bot waits to reconnect on disconnect. |
 | `ver (show)` | Displays the bot version. |
 | `quit (bot exit)` | Commands the bot to quit. |
 | `recon (bot reconnect)` | Commands the bot to reconnect. |
@@ -48,7 +48,7 @@ This document provides an overview of the available commands for the bot. The bo
 | `join (channel)` | Joins a new channel. |
 | `rejoin (channel)` | Rejoins the current channel. |
 | `resign (bot control)` | Resigns bot control. |
-| `server uptime (show)` | Displays the server uptime. |
+| `uptime (show)` | Displays the server uptime. |
 | `op (give op to someone)` | Designates and resigns. |
 | `lock (channel)` | Locks the channel. |
 | `unlock (channel)` | Unlocks the channel. |
