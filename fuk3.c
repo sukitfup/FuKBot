@@ -642,15 +642,53 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
             {
                 if (pb->botNum == 0) {
                     char pingStr[250];
+            #if defined(WINDOWS_CPP_BUILD)
+                    snprintf(pingStr, sizeof(pingStr), "%s -n 1 %s", BASE_PING, pb->server);
+            #else
                     snprintf(pingStr, sizeof(pingStr), "%s -c1 %s", BASE_PING, pb->server);
-
+            #endif
+            
                     FILE* fp1 = popen(pingStr, "r");
                     if (fp1) {
                         char pi[512];
+
+                        if (fgets(pi, sizeof(pi), fp1) == NULL) {
+                            Send(s, SERVER_BASE_SPEAK, "Ping to %s: Failed to read output", pb->server);
+                            pclose(fp1);
+                            msleep(1000);
+                            break;
+                        }
+
                         if (fgets(pi, sizeof(pi), fp1) != NULL) {
-                            Send(s, SERVER_BASE_SPEAK, pi);
+            #if defined(WINDOWS_CPP_BUILD)
+
+                            char *latency = strstr(pi, "time=");
+                            if (latency) {
+                                latency += 5;
+                                char *end = strstr(latency, "ms");
+                                if (end) *end = '\0';
+                                Send(s, SERVER_BASE_SPEAK, "Ping to %s: %s ms", pb->server, latency);
+                            } else {
+                                Send(s, SERVER_BASE_SPEAK, "Ping to %s: No response", pb->server);
+                            }
+            #else
+
+                            char *latency = strstr(pi, "time=");
+                            if (latency) {
+                                latency += 5;
+                                char *end = strstr(latency, " ms");
+                                if (end) *end = '\0';
+                                Send(s, SERVER_BASE_SPEAK, "Ping to %s: %s ms", pb->server, latency);
+                            } else {
+                                Send(s, SERVER_BASE_SPEAK, "Ping to %s: No response", pb->server);
+                            }
+            #endif
+                        } else {
+                            Send(s, SERVER_BASE_SPEAK, "Ping to %s: No response", pb->server);
                         }
                         pclose(fp1);
+                    } else {
+                        Send(s, SERVER_BASE_SPEAK, "Ping failed: Could not execute ping command");
                     }
                     msleep(1000);
                 }
