@@ -512,16 +512,14 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
 
             case CMD_BASE_PORT:
             {
-                // Original note: "arent you forgetting to update pb->port at the save? lol"
                 if (pb->botNum == 0) {
                     if (ptrDat == NULL) {
                         Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
                              BASE_PORT, BASE_COLON, pb->port);
                         msleep(1000);
                     } else {
-                        // Update both global and pb->port if that is your intention
                         port = atoi(ptrDat);
-                        pb->port = port;  // so it stays in sync
+                        pb->port = port;
                         save_cfg();
                         Send(s, ON_COMMAND_REPLY_0I, SERVER_WHISPER, szSpeaker,
                              BASE_PORT, BASE_ISNOW, port);
@@ -649,7 +647,6 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
 
             case CMD_BASE_PLACE:
             {
-                // Original code snippet
                 Send(s, "/%s %s %d to login to %s with actual delay of %d.\r\n",
                      SERVER_WHISPER, szSpeaker, pb->place, pb->server, pb->delay2);
                 msleep(1000);
@@ -666,10 +663,6 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                     FILE* fp1 = popen(pingStr, "r");
                     if (fp1) {
                         char pi[512];
-                        // read two lines
-                        if (fgets(pi, sizeof(pi), fp1) != NULL) {
-                            // do something with pi
-                        }
                         if (fgets(pi, sizeof(pi), fp1) != NULL) {
                             Send(s, SERVER_BASE_SPEAK, pi);
                         }
@@ -839,7 +832,6 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                 if (pb->botNum == 0) {
                     struct rusage r_usage;
                     getrusage(RUSAGE_SELF, &r_usage);
-                    // r_usage.ru_maxrss is often in KB on Linux, but usage may vary by system
                     Send(s, ON_COMMAND_REPLY_4, SERVER_WHISPER, szSpeaker, r_usage.ru_maxrss);
                     msleep(1000);
                 }
@@ -848,22 +840,17 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
 
             case CMD_UNKNOWN:
             default:
-                // No recognized command - do nothing or handle an error
                 break;
-        } // end switch
-    } // end if (starts with trigger)
+        }
+    }
 }
 
 void OnChannel(int s, struct data* pb, char* szEventText) {
-    if (!pb || !szEventText) return;  // Prevent NULL pointer dereference
-
-    // Trim leading spaces safely
+    if (!pb || !szEventText) return;
     while (*szEventText == ' ') ++szEventText;
-
-    // Ensure bounded copy to avoid overflow
     memset(pb->currChan, 0, sizeof(pb->currChan));
     strncpy(pb->currChan, szEventText, sizeof(pb->currChan) - 1);
-    pb->currChan[sizeof(pb->currChan) - 1] = '\0';  // Ensure null termination
+    pb->currChan[sizeof(pb->currChan) - 1] = '\0';
 
     if (!strcasecmp(szEventText, pb->channel)) {
         pb->chanham = 0;
@@ -875,9 +862,8 @@ void OnChannel(int s, struct data* pb, char* szEventText) {
         Send(s, SERVER_COMMAND_0, SERVER_PLACE, NULL);
         msleep(1000);
 
-        // Ensure 'backup' is properly initialized before use
-        extern char backup[MAX_CFG_LEN];  // Assumption: backup is declared elsewhere
-        if (backup[0] != '\0') {  // Ensure backup is not empty before using it
+        extern char backup[MAX_CFG_LEN];
+        if (backup[0] != '\0') {
             Send(s, SERVER_COMMAND_1, SERVER_JOIN, backup);
             msleep(1000);
         }
@@ -886,7 +872,7 @@ void OnChannel(int s, struct data* pb, char* szEventText) {
 
 void OnInfo(int s, struct data *pb, char *szEventText) {
     if (!szEventText) return;
-    char szEventTextCopy[EVENT_TEXT_SIZE];  // Allocate fixed buffer
+    char szEventTextCopy[EVENT_TEXT_SIZE];
     strncpy(szEventTextCopy, szEventText, sizeof(szEventTextCopy) - 1);
     szEventTextCopy[sizeof(szEventTextCopy) - 1] = '\0';
 
@@ -913,9 +899,6 @@ void OnInfo(int s, struct data *pb, char *szEventText) {
         if (tmp) {
             char *endptr;
             pb->place = strtol(tmp, &endptr, 10);
-            if (*endptr != '\0') {
-                // Handle error if conversion fails
-            }
         }
         return;
     }
@@ -934,7 +917,6 @@ void OnInfo(int s, struct data *pb, char *szEventText) {
         msleep(1000);
         return;
     }
-    // Simulates onjoin for the channel list in order to activate tag bans etc...
     else {
         char *pos, *user1, *user2;
         user1 = strtok_r(szEventTextCopy, ", ", &pos);
@@ -956,7 +938,7 @@ void OnInfo(int s, struct data *pb, char *szEventText) {
 
 void OnError(int s, struct data *pb, char *szEventText) {
     if (!pb || !szEventText) {
-        return;  // Prevent NULL dereferences
+        return;
     }
 
     if (strstr(szEventText, BASE_CHANRESTRICTED_TEXT)) {
@@ -973,7 +955,7 @@ void OnError(int s, struct data *pb, char *szEventText) {
 
 void OnPing(int s, struct data *pb, char *szEventText) {
     if (!pb || !szEventText) {
-        return;  // Prevent NULL dereferences
+        return;
     }
 
     if (pb->chanham == 1) {
@@ -982,12 +964,12 @@ void OnPing(int s, struct data *pb, char *szEventText) {
         Send(s, SERVER_COMMAND_1, SERVER_PONG, szEventText);
     }
     
-    msleep(1000);  // Ensure `pb` remains valid if this runs in a multi-threaded environment
+    msleep(1000);
 }
 
 void Dispatch(int s, struct data *pb, char *szEventText) {
     if (!pb || !szEventText) {
-        return;  // Prevent NULL dereference
+        return;
     }
 
     char *eventType, *pos;
@@ -1087,10 +1069,8 @@ void message_loop(int s, struct data* pb) {
         if (n > 0) {
             int nNumToRead = BUFFSIZE - nBufLen - nBufPos;
 
-            // Ensure we don't read more than the buffer can hold
             if (nNumToRead <= 0) {
                 if (nBufPos + nBufLen > BUFFSIZE) {
-                    // Prevent memory corruption
                     nBufLen = BUFFSIZE - nBufPos;
                 }
                 memmove(stageBuf, stageBuf + nBufPos, nBufLen);
@@ -1100,7 +1080,7 @@ void message_loop(int s, struct data* pb) {
 
             n = recv(s, stageBuf + nBufPos + nBufLen, nNumToRead, 0);
             if (n <= 0) {
-                return ; // Handle disconnection or error
+                return ;
             }
 
             nBufLen += n;
@@ -1109,7 +1089,6 @@ void message_loop(int s, struct data* pb) {
                 unsigned char* m = (unsigned char*) stageBuf + nBufPos;
                 int nMsgLen = 0;
 
-                // Find newline character as a message delimiter
                 while (nMsgLen < nBufLen && nMsgLen < BUFFSIZE) {
                     if (m[nMsgLen] == '\n')
                         break;
@@ -1117,25 +1096,19 @@ void message_loop(int s, struct data* pb) {
                 }
 
                 if (nMsgLen >= nBufLen) {
-                    break; // Incomplete message, wait for more data
+                    break;
                 }
 
-                // Ensure the message is null-terminated
                 m[nMsgLen] = '\0';
-
-                // Dispatch the complete message
                 Dispatch(s, pb, (char*) m);
-
-                // Adjust buffer to remove processed message
                 nBufLen -= (nMsgLen + 1);
                 nBufPos += (nMsgLen + 1);
 
-                // Reset buffer if empty
                 if (nBufLen == 0)
                     nBufPos = 0;
             }
         }
-        msleep(500); // Small delay to prevent CPU overuse
+        msleep(500);
     }
 }
 
@@ -1146,10 +1119,8 @@ int save_cfg() {
         return -1;
     }
     int i;
-    // Create JSON object
     cJSON *json = cJSON_CreateObject();
 
-    // Add string values
     cJSON_AddStringToObject(json, CFGSTUFF_USERNAME, username);
     cJSON_AddStringToObject(json, CFGSTUFF_PASSWORD, password);
     cJSON_AddStringToObject(json, CFGSTUFF_HOME, channel);
@@ -1189,14 +1160,9 @@ int save_cfg() {
     cJSON_AddItemToObject(json, "des", desArray);
     cJSON_AddItemToObject(json, "shit", shitArray);
 
-    // Convert JSON object to a string
     char *json_string = cJSON_Print(json);
-
-    // Save to file
     fprintf(cfg, "%s", json_string);
     fclose(cfg);
-
-    // Cleanup
     free(json_string);
     cJSON_Delete(json);
 
@@ -1211,7 +1177,7 @@ void json_safe_copy(cJSON *json, const char *key, char *dest, size_t dest_size) 
     cJSON *item = cJSON_GetObjectItem(json, key);
     if (item && cJSON_IsString(item) && item->valuestring) {
         strncpy(dest, item->valuestring, dest_size - 1);
-        dest[dest_size - 1] = '\0'; // Ensure null termination
+        dest[dest_size - 1] = '\0';
     }
 }
 
@@ -1222,7 +1188,6 @@ int read_config() {
         return -1;
     }
 
-    // Read file content
     fseek(cfg, 0, SEEK_END);
     long length = ftell(cfg);
     fseek(cfg, 0, SEEK_SET);
@@ -1236,7 +1201,6 @@ int read_config() {
     fclose(cfg);
     data[length] = '\0';
 
-    // Parse JSON
     cJSON *json = cJSON_Parse(data);
     if (!json) {
         perror("Error parsing JSON\n");
@@ -1244,7 +1208,6 @@ int read_config() {
         return -1;
     }
 
-    // Copy individual values safely
     json_safe_copy(json, "username", username, sizeof(username));
     json_safe_copy(json, "password", password, sizeof(password));
     json_safe_copy(json, "home", channel, sizeof(channel));
@@ -1254,7 +1217,6 @@ int read_config() {
     json_safe_copy(json, "backupchan", backup, sizeof(backup));
     json_safe_copy(json, "topic", topic, sizeof(topic));
 
-    // Read integer values safely
     cJSON *portItem = cJSON_GetObjectItem(json, "port");
     port = (portItem && cJSON_IsNumber(portItem)) ? portItem->valueint : 6112;
 
@@ -1276,7 +1238,6 @@ int read_config() {
     cJSON *banwaitItem = cJSON_GetObjectItem(json, "banwait");
     banWait = (banwaitItem && cJSON_IsNumber(banwaitItem)) ? banwaitItem->valueint : 0;
 
-    // Read and allocate arrays
     cJSON *masterArray = cJSON_GetObjectItem(json, "master");
     cJSON *safeArray = cJSON_GetObjectItem(json, "safe");
     cJSON *desArray = cJSON_GetObjectItem(json, "des");
@@ -1287,7 +1248,7 @@ int read_config() {
     desSz    = desArray    ? cJSON_GetArraySize(desArray)    : 0;
     shitSz   = shitArray   ? cJSON_GetArraySize(shitArray)   : 0;
 
-    allocate_lists();  // Allocate memory for master, safe, des, and shit arrays
+    allocate_lists();
 
     for (int i = 0; i < masterSz; i++) {
         cJSON *item = cJSON_GetArrayItem(masterArray, i);
@@ -1321,103 +1282,16 @@ int read_config() {
         }
     }
 
-    // Free memory safely
     cJSON_Delete(json);
     free(data);
 
     return 0;
 }
 
-// This function ensures that if the cached DNS results are
-// older than DNS_CACHE_TTL seconds, we refresh them.
-int get_cached_dns(const char *portStr) {
-    time_t now = time(NULL);
-
-    pthread_mutex_lock(&g_dns_mutex);
-
-    if (!atomic_load(&g_cached_dns) || (now - g_last_dns_update) > DNS_CACHE_TTL) {
-        // If we already had a cached list, free it.
-        struct addrinfo *old_dns = atomic_load(&g_cached_dns);
-        if (old_dns) {
-            freeaddrinfo(old_dns);
-            atomic_store(&g_cached_dns, NULL);
-        }
-
-        struct addrinfo hints;
-        memset(&hints, 0, sizeof(hints));
-        hints.ai_family   = AF_INET;
-        hints.ai_socktype = SOCK_STREAM;
-
-        // Use a temporary pointer for getaddrinfo.
-        struct addrinfo *temp = NULL;
-        int ret = getaddrinfo(server, portStr, &hints, &temp);
-        if (ret != 0) {
-            fprintf(stderr, "getaddrinfo failed: %s\n", gai_strerror(ret));
-            atomic_store(&g_cached_dns, NULL);
-            pthread_mutex_unlock(&g_dns_mutex);
-            return -1;
-        } else {
-            atomic_store(&g_cached_dns, temp);
-            g_last_dns_update = now;
-        }
-    }
-    pthread_mutex_unlock(&g_dns_mutex);
-    return 0;
-}
-
-static struct addrinfo* copy_addrinfo_if_valid(struct addrinfo* src) {
-    if (!src) return NULL;
-
-    struct addrinfo* dst = malloc(sizeof(struct addrinfo));
-    if (!dst) return NULL; // Handle allocation failure
-
-    memcpy(dst, src, sizeof(struct addrinfo));
-
-    // Copy underlying socket address
-    if (src->ai_addr && src->ai_addrlen > 0) {
-        dst->ai_addr = malloc(src->ai_addrlen);
-        if (!dst->ai_addr) {
-            free(dst);
-            return NULL;
-        }
-        memcpy(dst->ai_addr, src->ai_addr, src->ai_addrlen);
-    }
-
-    // Copy canonical name if present
-    if (src->ai_canonname) {
-        dst->ai_canonname = strdup(src->ai_canonname);
-    }
-
-    return dst;
-}
-
-static void free_addrinfo_copy(struct addrinfo *info) {
-    if (!info) return;
-
-    // If we set ai_next = NULL, no chain to traverse
-    // so just free what we allocated in copy_addrinfo_if_valid().
-    if (info->ai_addr) {
-        free(info->ai_addr);
-    }
-    if (info->ai_canonname) {
-        free(info->ai_canonname);
-    }
-    free(info);
-}
-
 static int connect_nonblock(int s, struct timeval tv)
 {
     set_nonblock(s);
 
-    // **Atomic Read Without Mutex**
-    struct addrinfo *local_dns = atomic_load(&g_cached_dns);
-
-    // **Only Deep Copy If Valid**
-    if (!local_dns) {
-        return -1; // No valid DNS entry
-    }
-
-    // **Atomic Read Without Mutex**
     struct addrinfo *safe_dns = copy_addrinfo_if_valid(local_dns);
     if (!safe_dns) {
         return -1;
@@ -1433,7 +1307,6 @@ static int connect_nonblock(int s, struct timeval tv)
         return -1;
     }
 
-    // Wait for writability
     fd_set wfds;
     FD_ZERO(&wfds);
     FD_SET(s, &wfds);
@@ -1441,14 +1314,13 @@ static int connect_nonblock(int s, struct timeval tv)
     ret = select(s + 1, NULL, &wfds, NULL, &tv);
     if (ret <= 0) { 
         free_addrinfo_copy(safe_dns);
-        return -1;  // 0 => timeout, -1 => error
+        return -1;
     }
     if (!FD_ISSET(s, &wfds)) {
         free_addrinfo_copy(safe_dns);
-        return -1;  // Not writable for some reason
+        return -1;
     }
 
-    // Double-check for connect() success
     int so_error = 0;
     socklen_t len = sizeof(so_error);
     getsockopt(s, SOL_SOCKET, SO_ERROR, &so_error, &len);
@@ -1459,32 +1331,19 @@ static int connect_nonblock(int s, struct timeval tv)
         return -1;
     }
     free_addrinfo_copy(safe_dns);
-    return 0; // success
+    return 0;
 }
 
-/**
- * Connect() tries exactly ONE address from the DNS cache
- * using the already-created socket 's'.
- *   - Returns 0 if connect succeeded,
- *     -1 if bind or connect failed,
- *     or if no addresses exist.
- */
 int Connect(int s, struct timeval tv, struct data* pb) {
-    // Convert port to string for getaddrinfo
+
     char portStr[16];
     snprintf(portStr, sizeof(portStr), "%d", pb->port);
 
-    // Obtain cached DNS results.
-    if (get_cached_dns(portStr) != 0) {
-        return -1; // DNS lookup failed
-    }
-
-    // BIND to your local IP if desired
     if (bindaddr[0]) {
         struct sockaddr_in local_addr;
         memset(&local_addr, 0, sizeof(local_addr));
         local_addr.sin_family = AF_INET;
-        local_addr.sin_port   = 0; // ephemeral local port
+        local_addr.sin_port   = 0;
         inet_pton(AF_INET, bindaddr, &local_addr.sin_addr);
 
         if (bind(s, (struct sockaddr*)&local_addr, sizeof(local_addr)) < 0) {
@@ -1493,13 +1352,10 @@ int Connect(int s, struct timeval tv, struct data* pb) {
         }
     }
 
-    // Nonblocking connect on the one address
     if (connect_nonblock(s, tv) == 0) {
-        // success
         return 0;
     }
 
-    // else fail
     return -1;
 }
 
@@ -1524,20 +1380,17 @@ void* thread_conn(void* arg) {
         }   
     }
 
-    // Ensure only one thread establishes the connection
     bool expected = false;
     if (!atomic_compare_exchange_strong(&pb->connected, &expected, true)) {
         close(s);
         pthread_exit(NULL);
     }
 
-    // First successful thread does the work
     Send(s, pb->logonPacket, sizeof(pb->logonPacket), 0);
     pb->conTime = time(NULL) - startTime;
     
     message_loop(s, pb);
     
-    // Cleanup and discont if not already disconnected by remote command.
     if (s != -1) {
         close(s);
     }
@@ -1547,7 +1400,6 @@ void* thread_conn(void* arg) {
 }
 
 void reinitialize_bot(struct data* pb) {
-    // Reset connection state and timing information
     pb->flood = 0;
     pb->conTime = 0;
     pb->lockdown = 0;
@@ -1588,28 +1440,26 @@ void create_threads(struct data* pb) {
         clean_exit(EXIT_FAILURE);
     }
 
-    // Create and configure each bot using indexed access
     for (int t = 0; t < numBots; t++) {
         char *replaced = replace_str(username, "#", t);
-        char locName[MAX_CFG_LEN] = { 0 };  // Ensure safe buffer size
+        char locName[MAX_CFG_LEN] = { 0 };
         
         if (replaced) {
             strncpy(locName, replaced, sizeof(locName) - 1);
-            locName[sizeof(locName) - 1] = '\0';  // Ensure null termination
-            free(replaced);  // Ensure no memory leaks
+            locName[sizeof(locName) - 1] = '\0';
+            free(replaced);
         } else {
             printf("Failed to replace username. Need # in username in config.json");
             strncpy(locName, username, sizeof(locName) - 1);
-            locName[sizeof(locName) - 1] = '\0';  // Ensure null termination
-            numBots = 1;  // Ensure only one bot is created
+            locName[sizeof(locName) - 1] = '\0';
+            numBots = 1;
         }
-        // Ensure pb[t].username has valid allocated memory before writing
+
         if (pb[t].username) {
             snprintf(pb[t].username, sizeof(pb[t].username), "%s", locName);
             pb[t].username[sizeof(pb[t].username) - 1] = '\0';
         }
         
-        // Repeat for other fields
         if (pb[t].password) {
             snprintf(pb[t].password, sizeof(pb[t].password), "%s", password);
             pb[t].password[sizeof(pb[t].password) - 1] = '\0';
@@ -1641,7 +1491,6 @@ void create_threads(struct data* pb) {
     
         pb[t].logonPacket[sizeof(pb[t].logonPacket) - 1] = '\0';
 
-        // Create threads for each bot
         for (int z = 0; z < threads; z++, i++) {
             if (pthread_create(&thread[i], NULL, thread_conn, &pb[t]) != 0) {
                 perror("Failed to create thread");
@@ -1649,7 +1498,6 @@ void create_threads(struct data* pb) {
         }
     }
 
-    // Join threads, we compare to i because it's the total number of threads
     for (int z = 0; z < i; z++) {
         err = pthread_join(thread[z], NULL);
         if (err != 0) {
@@ -1662,48 +1510,37 @@ void create_threads(struct data* pb) {
 
 int main() {
     srand((unsigned)time(NULL));
-
     printf("%s\n" , FUK_VERSION);
-    // Fork the process to run in the background.
     printf("PID: %d\n", getpid() + 1);
     if ((main_pid = fork()) == -1) {
         printf("shutting down: unable to fork\n");
         exit(1);
         return 1;
     }
-    // If the PID is not 0, then we are the parent process.
+
     if (main_pid != 0) {
         return 0;
     }
 
-    // Read configuration from file.
     if (read_config() != 0) {
         perror("Read config error.");
         clean_exit(EXIT_FAILURE);
     }
 
-    // Allocate the bot array AFTER numBots is set by read_config().
     pb = calloc(numBots, sizeof(struct data));
     if (!pb) {
         perror("Memory allocation failed for pb");
         clean_exit(EXIT_FAILURE);
     }
 
-    // Main loop: run indefinitely until the process is killed remotely.
     while (shutDown != 1) {
-        // Reinitialize each bot's data before starting threads.
         for (int i = 0; i < numBots; i++) {
             reinitialize_bot(&pb[i]);
         }
         startTime = time(NULL);
-
-        // Create threads that perform bot tasks.
         create_threads(pb);
-
-        // Sleep for a specified connection wait time.
         msleep(conWait * 1000);
     }
 
-    // Cleanup and exit
     clean_exit(EXIT_SUCCESS);
 }
