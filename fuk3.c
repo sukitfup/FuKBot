@@ -1272,54 +1272,15 @@ int read_config() {
     return 0;
 }
 
-static int connect_nonblock(int s, struct addrinfo *dns_results)
-{
-    if (!dns_results) {
-        return -1;
-    }
-
-    set_nonblock(s);
-
-    int ret = connect(s, dns_results->ai_addr, dns_results->ai_addrlen);
-    if (ret == 0) {
-        return 0;
-    }
-    if (errno != EINPROGRESS) {
-        return -1;
-    }
-
-    fd_set wfds;
-    FD_ZERO(&wfds);
-    FD_SET(s, &wfds);
-
-    struct timeval tv = { .tv_sec = 1, .tv_usec = 0 };
-    ret = select(s + 1, NULL, &wfds, NULL, &tv);
-    if (ret <= 0) {
-        return -1;
-    }
-    if (!FD_ISSET(s, &wfds)) {
-        return -1;
-    }
-
-    int so_error = 0;
-    socklen_t len = sizeof(so_error);
-    getsockopt(s, SOL_SOCKET, SO_ERROR, &so_error, &len);
-
-    if (so_error != 0) {
-        errno = so_error;
-        return -1;
-    }
-    return 0;
-}
-
 int Connect(int s, struct timeval tv, struct data* pb) {
     char portStr[16];
     snprintf(portStr, sizeof(portStr), "%d", pb->port);
 
+    // Perform fresh DNS lookup
     struct addrinfo hints;
     memset(&hints, 0, sizeof(hints));
-    hints.ai_family   = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_family   = AF_INET;      // IPv4 only
+    hints.ai_socktype = SOCK_STREAM;  // TCP
 
     struct addrinfo *dns_results = NULL;
     int ret = getaddrinfo(pb->server, portStr, &hints, &dns_results);
@@ -1328,11 +1289,12 @@ int Connect(int s, struct timeval tv, struct data* pb) {
         return -1;
     }
 
+    // Bind to local IP if specified
     if (bindaddr[0]) {
         struct sockaddr_in local_addr;
         memset(&local_addr, 0, sizeof(local_addr));
         local_addr.sin_family = AF_INET;
-        local_addr.sin_port   = 0;
+        local_addr.sin_port   = 0; // Ephemeral port
         inet_pton(AF_INET, bindaddr, &local_addr.sin_addr);
 
         if (bind(s, (struct sockaddr*)&local_addr, sizeof(local_addr)) < 0) {
@@ -1342,13 +1304,52 @@ int Connect(int s, struct timeval tv, struct data* pb) {
         }
     }
 
-    if (connect_nonblock(s, dns_results) == 0) {
+    // Set socket to non-blocking
+    set_nonblock(s);
+
+    // Attempt non-blocking connect
+    if (!dns_results) {
         freeaddrinfo(dns_results);
-        return 0;
+        return -1; // No valid DNS entry
+    }
+
+    ret = connect(s, dns_results->ai_addr, dns_results->ai_addrlen);
+    if (ret == 0) {
+        freeaddrinfo(dns_results);
+        return 0; // Immediate success
+    }
+    if (errno != EINPROGRESS) {
+        freeaddrinfo(dns_results);
+        return -1; // Immediate failure
+    }
+
+    fd_set wfds;
+    FD_ZERO(&wfds);
+    FD_SET(s, &wfds);
+
+    // Use the passed tv parameter instead of hardcoding
+    ret = select(s + 1, NULL, &wfds, NULL, &tv);
+    if (ret <= 0) {
+        freeaddrinfo(dns_results);
+        return -1; // Timeout or error
+    }
+    if (!FD_ISSET(s, &wfds)) {
+        freeaddrinfo(dns_results);
+        return -1; // Not writable
+    }
+
+    int so_error = 0;
+    socklen_t len = sizeof(so_error);
+    getsockopt(s, SOL_SOCKET, SO_ERROR, &so_error, &len);
+
+    if (so_error != 0) {
+        errno = so_error;
+        freeaddrinfo(dns_results);
+        return -1;
     }
 
     freeaddrinfo(dns_results);
-    return -1;
+    return 0; // Success
 }
 
 void* thread_conn(void* arg) {
