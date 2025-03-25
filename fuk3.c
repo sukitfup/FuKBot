@@ -642,34 +642,49 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
             {
                 if (pb->botNum == 0) {
                     char pingStr[250];
-                    snprintf(pingStr, sizeof(pingStr), "ping -c1 %s", pb->server);
+            #if defined(WINDOWS_CPP_BUILD)
+                    snprintf(pingStr, sizeof(pingStr), "ping -n 1 %s", pb->server); // Windows: 1 ping
+            #else
+                    snprintf(pingStr, sizeof(pingStr), "ping -c1 %s", pb->server); // Linux: 1 ping
+            #endif
             
                     FILE* fp1 = popen(pingStr, "r");
                     if (fp1) {
                         char pi[512];
                         char *latency = NULL;
             
+                        // Read lines until we find the one with latency
                         while (fgets(pi, sizeof(pi), fp1) != NULL) {
-                            if (strstr(pi, "time=")) {
-                                latency = strstr(pi, "time=");
-                                if (latency) {
-                                    latency += 5;
-                                    char *end = strchr(latency, ' ');
-                                    if (end) {
-                                        *end = '\0';
-                                    }
-                                    break;
-                                }
+            #if defined(WINDOWS_CPP_BUILD)
+                            // Windows: "Reply from 51.96.122.42: bytes=32 time=12ms TTL=64"
+                            latency = strstr(pi, "time=");
+                            if (latency) {
+                                latency += 5; // Skip "time="
+                                char *end = strstr(latency, "ms");
+                                if (end) *end = '\0';
+                                break;
                             }
+            #else
+                            // Linux: "64 bytes from 51.96.122.42: icmp_seq=1 ttl=64 time=12.3 ms"
+                            latency = strstr(pi, "time=");
+                            if (latency) {
+                                latency += 5; // Skip "time="
+                                char *end = strchr(latency, ' '); // Before " ms"
+                                if (end) *end = '\0';
+                                break;
+                            }
+            #endif
                         }
                         pclose(fp1);
-                        if (latency) {
-                            Send(s, "Ping to %s: %s ms", pb->server, latency);
+            
+                        // Send the latency if found, otherwise indicate failure
+                        if (latency && pb->server[0] != '\0') {
+                            Send(s, "Ping to %s: %s ms\r\n", pb->server, latency);
                         } else {
-                            Send(s, "Ping to %s: No response", pb->server);
+                            Send(s, "Ping to %s: No response\r\n", pb->server);
                         }
                     } else {
-                        Send(s, "Ping failed: Could not execute ping command");
+                        Send(s, "Ping failed: Could not execute ping command\r\n");
                     }
                     msleep(1000);
                 }
