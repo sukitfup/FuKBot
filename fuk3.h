@@ -316,15 +316,6 @@
 #define MAX_TOPIC_LEN 128
 #define SEND_BUFFER_SIZE 256
 #define EVENT_TEXT_SIZE 256
-// How long to cache DNS results in seconds
-#define DNS_CACHE_TTL 3
-
-// Global DNS cache
-static _Atomic(struct addrinfo*) g_cached_dns = NULL;
-static time_t g_last_dns_update = 0;
-
-// A simple mutex to protect g_cached_dns and g_last_dns_update
-static pthread_mutex_t g_dns_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct {
     char id[MAX_LIST_LEN];
