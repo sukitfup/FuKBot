@@ -1,16 +1,13 @@
 
 #include "fuk3.h"
 
-// Global pointers for lists (unchanged)
 masterList* master = NULL;
 safeList*   safe   = NULL;
 shitList*   shit   = NULL;
 desList*    des    = NULL;
 
-// Global pointer to the bot array
 struct data *pb = NULL;
 
-// Global sizes and configuration variables
 int masterSz = 0;
 int safeSz   = 0;
 int shitSz   = 0;
@@ -18,7 +15,6 @@ int desSz    = 0;
 int numBots  = 0;
 int main_pid, threadSz, port, threads, delay, scatter, banWait, conWait, randGreet, startTime;
 
-// Global strings for configuration
 char username[MAX_CFG_LEN];
 char password[MAX_CFG_LEN];
 char server[MAX_CFG_LEN];
@@ -42,7 +38,6 @@ int Send(int s, const char* lpszFmt, ...) {
     va_list argptr;
     va_start(argptr, lpszFmt);
     
-    // Prevent buffer overflow
     vsnprintf(szOutStr, sizeof(szOutStr), lpszFmt, argptr);
     
     va_end(argptr);
@@ -141,14 +136,13 @@ CommandID resolve_command(const char* com) {
     if (!strcasecmp(com, BASE_CONTIME))       return CMD_BASE_CONTIME;
     if (!strcasecmp(com, BASE_MEM))           return CMD_BASE_MEM;
 
-    // If none matched, return unknown
     return CMD_UNKNOWN;
 }
 
 void processList(int s, char* com, char* name, void **pArray, int *pSize, const char* type) {
     masterList *listArray = (masterList *)(*pArray);
     int x;
-    // Check if command is LIST
+
     if (!strcasecmp(CFGSTUFF_LIST, com )) {
         if (*pSize == 0) {
             Send(s, "The %s list is empty.\n", type);
@@ -161,7 +155,7 @@ void processList(int s, char* com, char* name, void **pArray, int *pSize, const 
         }
         return;
     }
-    // REMOVE
+
     else if (!strcasecmp(CFGSTUFF_REM, com) && (*name)) {
         for (x = 0; x < *pSize; x++) {
             if (!strcasecmp(listArray[x].id, name)) {
@@ -169,20 +163,19 @@ void processList(int s, char* com, char* name, void **pArray, int *pSize, const 
             }
         }
         if (x == *pSize) {
-            // Item not found; send error and return
             Send(s, "Name %s not found in %s list.\n", name, type);
             msleep(1000);
             return;
         }
-        // Once you find the entry, remove it:
+
         memmove(&listArray[x], &listArray[x + 1],
                 ((*pSize) - x - 1) * sizeof(masterList));
         (*pSize)--;
     
         masterList *temp = realloc(listArray, (*pSize) * sizeof(masterList));
-        if (temp || *pSize == 0) {  // Allow for NULL if list is empty
+        if (temp || *pSize == 0) {
             listArray = temp;
-            *pArray = listArray; // update pointer
+            *pArray = listArray;
         } else {
             Send(s, "realloc failed in processList removal");
             msleep(1000);
@@ -192,16 +185,16 @@ void processList(int s, char* com, char* name, void **pArray, int *pSize, const 
         msleep(1000);
         return;
     }
-    // ADD
+
     else if (!strcasecmp(CFGSTUFF_ADD, com) && (*name)) {
-        // Check if the entry already exists
+
         for (x = 0; x < *pSize; x++) {
             if (!strcasecmp(listArray[x].id, name)) {
                 Send(s, CFGSTUFF_FORMATTING_ADD_SECTION, name, type);
                 return;
             }
         }
-        // If not found, add a new entry
+
         masterList *temp = realloc(listArray, (*pSize + 1) * sizeof(masterList));
         if (temp) {
             listArray = temp;
@@ -209,7 +202,7 @@ void processList(int s, char* com, char* name, void **pArray, int *pSize, const 
             snprintf(listArray[*pSize].id, sizeof(listArray[*pSize].id), "%s", name);
             (*pSize)++;
             Send(s, "Added %s to %s list.\n", name, type);
-            *pArray = listArray; // update the pointer
+            *pArray = listArray;
             msleep(1000);
         } else {
             perror("realloc failed in processList addition");
@@ -231,7 +224,7 @@ void cfgStuff(int s, char* com, char* text) {
     if (!list) return;
     char* name = strtok_r(NULL, " ", &pos);
     if (!name) {
-        name = "";  // Ensures name is always a valid pointer
+        name = "";
     }
     if (strstr(list, CFGSTUFF_MASTER)) {
         processList(s, com, name, (void**)&master, &masterSz, CFGSTUFF_MASTER);
@@ -258,7 +251,7 @@ void OnJoin(int s, struct data* pb, char* szSpeaker) {
         } else {
             pb->flood = 0;
         }
-        // Process lists after we survive the flood.
+
         for (int d = 0; d < desSz; d++) {
             if (!strcasecmp(szSpeaker, des[d].id)) {
                 Send(s, SERVER_COMMAND_1, BASE_DESIGNATE, szSpeaker);
@@ -311,16 +304,14 @@ void OnUserFlags(int s, struct data* pb, char* szSpeaker, u_long uFlags) {
     }
 }
 
-// The OnTalk function
+
 void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
 {
     int i = 0;
     int doStuff = 0;
 
-    // Basic sanity checks
     if (!pb || !szSpeaker || !szEventText) return;
 
-    // Check if speaker is in master list
     for (i = 0; i < masterSz; i++) {
         if (!strcasecmp(szSpeaker, master[i].id)) {
             doStuff = 1;
@@ -328,25 +319,21 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
         }
     }
 
-    // If speaker not recognized, return
     if (!doStuff) return;
-    // Check if the message starts with the bot's trigger or a '?' 
+
     if (szEventText[0] == pb->trigger[0] || szEventText[0] == '?') {
-        // Create a buffer for the command string (everything after the first character)
+
         char tmpBuf[SEND_BUFFER_SIZE] = {0};
         strncpy(tmpBuf, szEventText + 1, sizeof(tmpBuf) - 1);
 
-        // Use strsep to separate the first token (command) from the rest (arguments)
         char* ptrDat = tmpBuf;
         char* com = strsep(&ptrDat, " ");
         if (!com) {
-            return;  // no command found
+            return;
         }
 
-        // Resolve the command to an enum
         CommandID cmd = resolve_command(com);
         
-        // Switch on the enum for clearer code
         switch (cmd)
         {
             case CMD_CFGSTUFF_LIST:
@@ -382,12 +369,10 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
                         msleep(1000);
                     }
                 } else {
-                    // Set new trigger
                     if (pb->botNum == 0) {
                         memset(pb->trigger, 0, sizeof(pb->trigger));
                         strncpy(pb->trigger, ptrDat, sizeof(pb->trigger) - 1);
 
-                        // Possibly also update global trigger
                         memset(trigger, 0, sizeof(trigger));
                         strncpy(trigger, ptrDat, sizeof(trigger) - 1);
 
@@ -655,7 +640,6 @@ void OnTalk(int s, struct data* pb, char* szSpeaker, char* szEventText)
 
             case CMD_BASE_PING:
             {
-                // Only if pb->botNum == 0
                 if (pb->botNum == 0) {
                     char pingStr[250];
                     snprintf(pingStr, sizeof(pingStr), "%s -c1 %s", BASE_PING, pb->server);
@@ -1288,22 +1272,19 @@ int read_config() {
     return 0;
 }
 
-static int connect_nonblock(int s, struct timeval tv)
+static int connect_nonblock(int s, struct addrinfo *dns_results)
 {
-    set_nonblock(s);
-
-    struct addrinfo *safe_dns = copy_addrinfo_if_valid(local_dns);
-    if (!safe_dns) {
+    if (!dns_results) {
         return -1;
     }
 
-    int ret = connect(s, safe_dns->ai_addr, safe_dns->ai_addrlen);
+    set_nonblock(s);
+
+    int ret = connect(s, dns_results->ai_addr, dns_results->ai_addrlen);
     if (ret == 0) {
-        free_addrinfo_copy(safe_dns);
         return 0;
     }
     if (errno != EINPROGRESS) {
-        free_addrinfo_copy(safe_dns);
         return -1;
     }
 
@@ -1311,13 +1292,12 @@ static int connect_nonblock(int s, struct timeval tv)
     FD_ZERO(&wfds);
     FD_SET(s, &wfds);
 
+    struct timeval tv = { .tv_sec = 1, .tv_usec = 0 };
     ret = select(s + 1, NULL, &wfds, NULL, &tv);
-    if (ret <= 0) { 
-        free_addrinfo_copy(safe_dns);
+    if (ret <= 0) {
         return -1;
     }
     if (!FD_ISSET(s, &wfds)) {
-        free_addrinfo_copy(safe_dns);
         return -1;
     }
 
@@ -1327,17 +1307,26 @@ static int connect_nonblock(int s, struct timeval tv)
 
     if (so_error != 0) {
         errno = so_error;
-        free_addrinfo_copy(safe_dns);
         return -1;
     }
-    free_addrinfo_copy(safe_dns);
     return 0;
 }
 
 int Connect(int s, struct timeval tv, struct data* pb) {
-
     char portStr[16];
     snprintf(portStr, sizeof(portStr), "%d", pb->port);
+
+    struct addrinfo hints;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family   = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+
+    struct addrinfo *dns_results = NULL;
+    int ret = getaddrinfo(pb->server, portStr, &hints, &dns_results);
+    if (ret != 0) {
+        fprintf(stderr, "getaddrinfo failed for %s:%s: %s\n", pb->server, portStr, gai_strerror(ret));
+        return -1;
+    }
 
     if (bindaddr[0]) {
         struct sockaddr_in local_addr;
@@ -1348,17 +1337,19 @@ int Connect(int s, struct timeval tv, struct data* pb) {
 
         if (bind(s, (struct sockaddr*)&local_addr, sizeof(local_addr)) < 0) {
             perror("bind failed");
+            freeaddrinfo(dns_results);
             return -1;
         }
     }
 
-    if (connect_nonblock(s, tv) == 0) {
+    if (connect_nonblock(s, dns_results) == 0) {
+        freeaddrinfo(dns_results);
         return 0;
     }
 
+    freeaddrinfo(dns_results);
     return -1;
 }
-
 
 void* thread_conn(void* arg) {
     int s;
