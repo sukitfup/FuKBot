@@ -442,6 +442,3 @@ int read_config();
 int Connect(int s, struct timeval tv, struct data* pb);
 void* thread_conn(void* arg);
 void create_threads(struct data* pb);
-int get_cached_dns(const char *portStr);
-static int connect_nonblock(int s, struct timeval tv);
-static struct addrinfo* copy_addrinfo_if_valid(struct addrinfo* src);
