@@ -921,6 +921,7 @@ void OnInfo(int s, struct data *pb, char *szEventText) {
 }
 
 void OnError(int s, struct data *pb, char *szEventText) {
+    (void)s;
     if (!pb || !szEventText) {
         return;
     }
@@ -969,12 +970,14 @@ void Dispatch(int s, struct data *pb, char *szEventText) {
             USER_FLAGS = strtok_r(NULL, " ", &pos);
             USER_PING = strtok_r(NULL, " ", &pos);
             USER_NAME = strtok_r(NULL, " ", &pos);
+            (void)USER_PING;
             OnUserFlags(s, pb, USER_NAME, atoi(USER_FLAGS));
             return;
         } else if(!strcasecmp(USER_CMD, "UPDATE")) {
             USER_FLAGS = strtok_r(NULL, " ", &pos);
             USER_PING = strtok_r(NULL, " ", &pos);
             USER_NAME = strtok_r(NULL, " ", &pos);
+            (void)USER_PING;
             OnUserFlags(s, pb, USER_NAME, atoi(USER_FLAGS));
             return;
         } else if(!strcasecmp(USER_CMD, "EMOTE")) {
@@ -986,18 +989,21 @@ void Dispatch(int s, struct data *pb, char *szEventText) {
             USER_FLAGS = strtok_r(NULL, " ", &pos);
             USER_PING = strtok_r(NULL, " ", &pos);
             USER_NAME = strtok_r(NULL, " ", &pos);
+            (void)USER_PING;
             OnJoin(s, pb, USER_NAME);
             return;
         } else if(!strcasecmp(USER_CMD, "WHISPER")) {
             USER_DIRECTION = strtok_r(NULL, " ", &pos);
             USER_NAME = strtok_r(NULL, " ", &pos);
             USER_MSG = strtok_r(NULL, "\r\n", &pos);
+            (void)USER_DIRECTION;
             OnTalk(s, pb, USER_NAME, USER_MSG);
             return;
         } else if(!strcasecmp(USER_CMD, "TALK")) {
             USER_DIRECTION = strtok_r(NULL, " ", &pos);
             USER_NAME = strtok_r(NULL, " ", &pos);
             USER_MSG = strtok_r(NULL, "\r\n", &pos);
+            (void)USER_DIRECTION;
             OnTalk(s , pb, USER_NAME, USER_MSG);
             return;
         }else
@@ -1276,11 +1282,10 @@ int Connect(int s, struct timeval tv, struct data* pb) {
     char portStr[16];
     snprintf(portStr, sizeof(portStr), "%d", pb->port);
 
-    // Perform fresh DNS lookup
     struct addrinfo hints;
     memset(&hints, 0, sizeof(hints));
-    hints.ai_family   = AF_INET;      // IPv4 only
-    hints.ai_socktype = SOCK_STREAM;  // TCP
+    hints.ai_family   = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
 
     struct addrinfo *dns_results = NULL;
     int ret = getaddrinfo(pb->server, portStr, &hints, &dns_results);
@@ -1289,12 +1294,11 @@ int Connect(int s, struct timeval tv, struct data* pb) {
         return -1;
     }
 
-    // Bind to local IP if specified
     if (bindaddr[0]) {
         struct sockaddr_in local_addr;
         memset(&local_addr, 0, sizeof(local_addr));
         local_addr.sin_family = AF_INET;
-        local_addr.sin_port   = 0; // Ephemeral port
+        local_addr.sin_port   = 0;
         inet_pton(AF_INET, bindaddr, &local_addr.sin_addr);
 
         if (bind(s, (struct sockaddr*)&local_addr, sizeof(local_addr)) < 0) {
@@ -1304,38 +1308,35 @@ int Connect(int s, struct timeval tv, struct data* pb) {
         }
     }
 
-    // Set socket to non-blocking
     set_nonblock(s);
 
-    // Attempt non-blocking connect
     if (!dns_results) {
         freeaddrinfo(dns_results);
-        return -1; // No valid DNS entry
+        return -1;
     }
 
     ret = connect(s, dns_results->ai_addr, dns_results->ai_addrlen);
     if (ret == 0) {
         freeaddrinfo(dns_results);
-        return 0; // Immediate success
+        return 0;
     }
     if (errno != EINPROGRESS) {
         freeaddrinfo(dns_results);
-        return -1; // Immediate failure
+        return -1;
     }
 
     fd_set wfds;
     FD_ZERO(&wfds);
     FD_SET(s, &wfds);
 
-    // Use the passed tv parameter instead of hardcoding
     ret = select(s + 1, NULL, &wfds, NULL, &tv);
     if (ret <= 0) {
         freeaddrinfo(dns_results);
-        return -1; // Timeout or error
+        return -1;
     }
     if (!FD_ISSET(s, &wfds)) {
         freeaddrinfo(dns_results);
-        return -1; // Not writable
+        return -1;
     }
 
     int so_error = 0;
@@ -1349,7 +1350,7 @@ int Connect(int s, struct timeval tv, struct data* pb) {
     }
 
     freeaddrinfo(dns_results);
-    return 0; // Success
+    return 0;
 }
 
 void* thread_conn(void* arg) {
@@ -1447,30 +1448,20 @@ void create_threads(struct data* pb) {
             numBots = 1;
         }
 
-        if (pb[t].username) {
-            snprintf(pb[t].username, sizeof(pb[t].username), "%s", locName);
-            pb[t].username[sizeof(pb[t].username) - 1] = '\0';
-        }
+        snprintf(pb[t].username, sizeof(pb[t].username), "%s", locName);
+        pb[t].username[sizeof(pb[t].username) - 1] = '\0';
         
-        if (pb[t].password) {
-            snprintf(pb[t].password, sizeof(pb[t].password), "%s", password);
-            pb[t].password[sizeof(pb[t].password) - 1] = '\0';
-        }
+        snprintf(pb[t].password, sizeof(pb[t].password), "%s", password);
+        pb[t].password[sizeof(pb[t].password) - 1] = '\0';
         
-        if (pb[t].channel) {
-            snprintf(pb[t].channel, sizeof(pb[t].channel), "%s", channel);
-            pb[t].channel[sizeof(pb[t].channel) - 1] = '\0';
-        }
+        snprintf(pb[t].channel, sizeof(pb[t].channel), "%s", channel);
+        pb[t].channel[sizeof(pb[t].channel) - 1] = '\0';
         
-        if (pb[t].server) {
-            snprintf(pb[t].server, sizeof(pb[t].server), "%s", server);
-            pb[t].server[sizeof(pb[t].server) - 1] = '\0';
-        }
+        snprintf(pb[t].server, sizeof(pb[t].server), "%s", server);
+        pb[t].server[sizeof(pb[t].server) - 1] = '\0';
         
-        if (pb[t].trigger) {
-            snprintf(pb[t].trigger, sizeof(pb[t].trigger), "%s", trigger);
-            pb[t].trigger[sizeof(pb[t].trigger) - 1] = '\0';
-        }        
+        snprintf(pb[t].trigger, sizeof(pb[t].trigger), "%s", trigger);
+        pb[t].trigger[sizeof(pb[t].trigger) - 1] = '\0';        
 
         pb[t].botNum = t;
         pb[t].port = port;
